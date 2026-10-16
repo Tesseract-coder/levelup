@@ -95,7 +95,7 @@ export async function seedDemoData(repo: Repository, days = 60) {
           const u = unit ?? f.defaultUnit;
           const grams = Math.round(gramsFor(f, u, qty));
           const m = macrosFor(f, grams);
-          food.push({ id: newId(), date, meal, name: f.name, quantity: qty, unit: u, gramsEst: grams, ...m, confidence: 0.75, assumptions: 'demo data', source: 'ai', createdAt: ts });
+          food.push({ id: newId(), date, meal, name: f.name, quantity: qty, unit: u, gramsEst: grams, ...m, confidence: 0.75, assumptions: 'demo data', source: 'offline', createdAt: ts });
         }
       }
     }

@@ -1,6 +1,6 @@
 import { LevelUpDB, SCHEMA_VERSION, TABLES, type TableName } from './dexie';
 import { EXPORT_FORMAT, EXPORT_VERSION, type ExportBundle, type RecordOf, type Repository } from './repository';
-import type { Goal, ParseCacheEntry, Settings } from './types';
+import type { Goal, Settings } from './types';
 import { newId } from '@/lib/id';
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -13,7 +13,6 @@ export const DEFAULT_SETTINGS: Settings = {
   reminders: { enabled: false },
   onboarded: false,
   disclaimerAccepted: false,
-  aiEnabled: true,
   haptics: true,
   fasting: null,
 };
@@ -168,19 +167,6 @@ export class DexieRepository implements Repository {
     return { activities, logs, food, sleep, body, mood };
   }
 
-  async getParseCache(key: string) {
-    return this.db.parseCache.get(key);
-  }
-  async putParseCache(entry: ParseCacheEntry) {
-    await this.db.parseCache.put(entry);
-    // keep the cache small
-    const count = await this.db.parseCache.count();
-    if (count > 200) {
-      const old = await this.db.parseCache.orderBy('createdAt').limit(count - 200).primaryKeys();
-      await this.db.parseCache.bulkDelete(old);
-    }
-  }
-
   async exportAll(): Promise<ExportBundle> {
     const data: ExportBundle['data'] = {};
     for (const t of TABLES) data[t] = await this.db.table(t).toArray();
@@ -207,9 +193,8 @@ export class DexieRepository implements Repository {
   }
 
   async deleteAll() {
-    await this.db.transaction('rw', [...TABLES.map((t) => this.db.table(t)), this.db.parseCache], async () => {
+    await this.db.transaction('rw', TABLES.map((t) => this.db.table(t)), async () => {
       for (const t of TABLES) await this.db.table(t).clear();
-      await this.db.parseCache.clear();
     });
   }
 }

@@ -5,7 +5,7 @@ import { seedDemoData } from '@/dev/seed';
 import { addDays, todayKey, startOfWeek } from '@/domain/dates';
 import { calorieAdherence, computeRangeStats, proteinAdherence, sleepAdherence } from '@/domain/stats';
 import { buildRuleSummary } from '@/domain/rulesSummary';
-import { ungroundedNumbers } from '@shared/sanitize';
+import { ungroundedNumbers } from '@/domain/rulesSummary';
 import type { RangeData } from '@/db/repository';
 import type { Goal } from '@/db/types';
 
@@ -76,18 +76,3 @@ describe('range stats + rule summary on demo data', () => {
   });
 });
 
-import { SummaryRequest } from '@shared/schemas';
-describe('AI summary request', () => {
-  it('rule output always fits the API contract', async () => {
-    const repo = new DexieRepository(new LevelUpDB('test-contract'));
-    await seedDemoData(repo, 30);
-    const today = todayKey();
-    const data = await repo.rangeData(addDays(today, -200), today);
-    const goal = (await repo.getActiveGoal())!;
-    const ws = startOfWeek(addDays(today, -7), 1);
-    for (const [kind, s, e] of [['day', today, today], ['week', ws, addDays(ws, 6)]] as const) {
-      const r = buildRuleSummary(kind, computeRangeStats(s, e, data, goal, { graceDaysPerWeek: 1, weekStartsOn: 1 }, today), null);
-      expect(SummaryRequest.safeParse({ kind, goal: 'Lose fat', facts: r.facts, candidates: r.candidates }).success).toBe(true);
-    }
-  });
-});

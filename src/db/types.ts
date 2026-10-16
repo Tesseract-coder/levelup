@@ -109,6 +109,7 @@ export interface ActivityLog {
 }
 
 export type Meal = 'breakfast' | 'lunch' | 'snack' | 'dinner' | 'other';
+/** 'offline' = estimated from the built-in food database. 'ai' only appears in data from earlier versions. */
 export type FoodSource = 'ai' | 'manual' | 'saved' | 'offline';
 
 export interface Macros {
@@ -213,6 +214,9 @@ export interface Summary {
   misses: SummaryItem[];
   improvements: SummaryItem[];
   nextFocus: NextFocus;
+  /** Stat lines the summary text is built from. */
+  facts?: { id: string; text: string }[];
+  /** 'ai' only appears in data created by earlier versions. */
   generatedBy: 'ai' | 'rules';
   generatedAt: number;
 }
@@ -241,15 +245,8 @@ export interface Settings {
   reminders: ReminderSettings;
   onboarded: boolean;
   disclaimerAccepted: boolean;
-  aiEnabled: boolean;
   haptics: boolean;
   fasting?: { startedAt: number; targetHours: number } | null;
   demoData?: boolean;
 }
 
-export interface ParseCacheEntry {
-  key: string;
-  kind: 'food' | 'activity';
-  result: unknown;
-  createdAt: number;
-}

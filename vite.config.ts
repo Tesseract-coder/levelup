@@ -4,8 +4,6 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath, URL } from 'node:url';
 
-const API_PORT = process.env.PORT ?? '8787';
-
 export default defineConfig({
   plugins: [
     react(),
@@ -41,7 +39,6 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,woff2,png,svg,ico}'],
         globIgnores: ['**/*cyrillic*', '**/*vietnamese*', '**/*greek*', '**/shortcut-*'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//],
         importScripts: ['/reminders-sw.js'],
         cleanupOutdatedCaches: true,
       },
@@ -51,16 +48,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@shared': fileURLToPath(new URL('./shared', import.meta.url)),
     },
   },
-  server: {
-    host: true,
-    proxy: { '/api': `http://localhost:${API_PORT}` },
-  },
-  preview: {
-    proxy: { '/api': `http://localhost:${API_PORT}` },
-  },
+  server: { host: true },
   build: {
     target: 'es2020',
     rollupOptions: {

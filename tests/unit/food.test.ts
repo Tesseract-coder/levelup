@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { parseFoodTextLocally, rescaleItem } from '@/domain/localFoodParser';
-import { sanitizeFoodItems, validateSummary, ungroundedNumbers, extractNumbers } from '@shared/sanitize';
+import { ungroundedNumbers, extractNumbers } from '@/domain/rulesSummary';
 
 const SAMPLE =
   'Breakfast: 2 boiled eggs, 2 slices of brown bread with peanut butter, black coffee. Lunch: 2 rotis, 1 katori dal, mixed veg sabzi, curd. Snack: banana and a handful of almonds. Dinner: paneer bhurji and 1 roti.';
 
-describe('offline food parser', () => {
+describe('food parser', () => {
   const items = parseFoodTextLocally(SAMPLE);
   it('splits meals and items', () => {
     expect(items.map((i) => i.meal)).toEqual([
@@ -46,32 +46,7 @@ describe('offline food parser', () => {
   });
 });
 
-describe('AI output sanitising', () => {
-  it('clamps absurd values and repairs calories from macros', () => {
-    const out = sanitizeFoodItems({
-      items: [
-        { meal: 'lunch', name: 'Dal', quantity: 1, unit: 'katori', grams_estimate: 150, calories: 99999, protein_g: 9, carbs_g: 22, fat_g: 4.5, fiber_g: null, confidence: 3, assumptions: '' },
-        { meal: 'brunch', name: '  Roti ', quantity: 'two', unit: '', grams_estimate: -5, calories: 120, protein_g: 3.5, carbs_g: 20, fat_g: 2.5, confidence: 0.8, assumptions: 'medium' },
-        { name: '' },
-        'garbage',
-      ],
-    });
-    expect(out).toHaveLength(2);
-    expect(out[0].calories).toBe(165); // 4*9 + 4*22 + 9*4.5 (recomputed: 4000 clamp differs >35%)
-    expect(out[0].confidence).toBeLessThanOrEqual(0.5);
-    expect(out[1].meal).toBe('other');
-    expect(out[1].name).toBe('Roti');
-    expect(out[1].quantity).toBe(1);
-    expect(out[1].unit).toBe('serving');
-    expect(out[1].gramsEst).toBe(0);
-  });
-  it('returns [] for non-JSON shapes', () => {
-    expect(sanitizeFoodItems(null)).toEqual([]);
-    expect(sanitizeFoodItems('nope')).toEqual([]);
-  });
-});
-
-describe('summary number grounding', () => {
+describe('summary numbers are backed by stats', () => {
   const facts = [
     { id: 'protein_days', text: 'Protein target (110 g) hit on 5 of 7 days; average 102% of target' },
     { id: 'sleep_low', text: 'Slept under 6 h on 3 nights; average 6.4 h vs 7.5 h target' },
@@ -84,25 +59,13 @@ describe('summary number grounding', () => {
   });
   it('rejects invented numbers', () => {
     expect(ungroundedNumbers('You averaged 95 g protein', facts)).toEqual([95]);
-    const v = validateSummary(
-      { wins: [{ text: 'Great job, 9 days!', facts: ['protein_days'] }], misses: [], improvements: [], next_focus: { text: 'Sleep 7.5 h', facts: ['sleep_low'] } },
-      facts,
-    );
-    expect(v.ok).toBe(false);
-  });
-  it('rejects shaming tone', () => {
-    const v = validateSummary(
-      { wins: [], misses: [{ text: 'You failed at sleep', facts: [] }], improvements: [], next_focus: { text: 'Sleep more', facts: [] } },
-      facts,
-    );
-    expect(v.ok).toBe(false);
   });
 });
 
 import { parseActivityLocally } from '@/domain/localActivityParser';
 import { HABIT_PRESETS, WORKOUT_PRESETS, presetToDef } from '@/domain/presets';
 
-describe('offline activity parser', () => {
+describe('activity note parser', () => {
   const defs = [...WORKOUT_PRESETS, ...HABIT_PRESETS].map((p, i) => presetToDef(p, i));
   it('parses the spec example', () => {
     const e = parseActivityLocally('Today I cycled 40 min, learned React for 1 hour, slept 6.5 hrs', defs);

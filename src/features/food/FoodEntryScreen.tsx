@@ -1,20 +1,20 @@
 import clsx from 'clsx';
-import { ArrowLeft, Bookmark, Check, ChevronDown, Info, Mic, MicOff, Plus, Repeat, Search, Sparkles, Trash2, WifiOff } from 'lucide-react';
+import { ArrowLeft, Bookmark, Check, ChevronDown, Info, Mic, MicOff, Plus, Repeat, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import type { MealName, ParsedFoodItem } from '@shared/sanitize';
-import { Button, Card, Chip, EstimateBadge, IconButton, Input, Notice, ProgressBar, Skeleton } from '@/components/ui';
+import { Button, Card, Chip, EstimateBadge, IconButton, Input, Notice, ProgressBar } from '@/components/ui';
 import { repo } from '@/db';
 import type { FoodEntry, FoodSource, Meal, SavedFood } from '@/db/types';
-import { useFood, useGoal, useProfile, useSavedFoods, useToday } from '@/hooks/data';
-import { failureMessage, parseFood, type AIFailure } from '@/lib/ai';
+
+type MealName = Meal;
+import { useFood, useGoal, useSavedFoods, useToday } from '@/hooks/data';
 import { newId } from '@/lib/id';
 import { refresh } from '@/lib/queryClient';
 import { haptic } from '@/lib/haptics';
 import { useUI } from '@/stores/ui';
 import { addDays, formatDay } from '@/domain/dates';
 import { groupByMeal, guessMeal, MEAL_LABEL, MEAL_ORDER, sumMacros } from '@/domain/nutrition';
-import { itemFromFood, rescaleItem, searchFoods } from '@/domain/localFoodParser';
+import { itemFromFood, parseFoodTextLocally, rescaleItem, searchFoods, type ParsedFoodItem } from '@/domain/localFoodParser';
 
 type ReviewItem = ParsedFoodItem & { key: string; source: FoodSource };
 
@@ -26,34 +26,28 @@ export default function FoodEntryScreen() {
   const [params] = useSearchParams();
   const today = useToday();
   const date = params.get('date') ?? today;
-  const { data: profile } = useProfile();
   const [text, setText] = useState('');
   const [defaultMeal, setDefaultMeal] = useState<MealName | 'auto'>('auto');
   const [items, setItems] = useState<ReviewItem[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [source, setSource] = useState<{ kind: 'ai' | 'offline' | 'saved'; reason?: AIFailure }>({ kind: 'ai' });
 
   const meal: MealName = defaultMeal === 'auto' ? (date === today ? guessMeal() : 'other') : defaultMeal;
 
-  async function breakDown() {
+  // Parsed on the device against the built-in food database — instant and private.
+  function breakDown() {
     if (text.trim().length < 2) return;
-    setLoading(true);
-    const r = await parseFood(text, { diet: profile?.dietPreference, defaultMeal: meal });
-    setItems(r.items.map((i) => ({ ...i, key: newId(), source: r.source === 'ai' ? 'ai' : 'offline' })));
-    setSource({ kind: r.source, reason: r.fallbackReason });
-    setLoading(false);
+    const parsed = parseFoodTextLocally(text.trim().replace(/\s+/g, ' '), meal);
+    setItems(parsed.map((i) => ({ ...i, key: newId(), source: 'offline' })));
   }
 
   function applySaved(s: SavedFood) {
     const m = (s.defaultMeal as MealName) ?? meal;
     const add = s.items.map((i) => ({ ...i, meal: m, confidence: 0.9, assumptions: `From ${s.type === 'meal' ? 'saved meal' : 'My foods'}: ${s.name}`, key: newId(), source: 'saved' as const }));
     setItems((cur) => [...(cur ?? []), ...add]);
-    setSource((s0) => (items ? s0 : { kind: 'saved' }));
     void repo.saveSaved({ ...s, useCount: s.useCount + 1, lastUsedAt: Date.now() });
   }
 
   if (items) {
-    return <Review date={date} items={items} setItems={setItems} source={source} onBack={() => setItems(null)} defaultMeal={meal} />;
+    return <Review date={date} items={items} setItems={setItems} onBack={() => setItems(null)} defaultMeal={meal} />;
   }
 
   return (
@@ -103,16 +97,9 @@ export default function FoodEntryScreen() {
             ))}
           </div>
         </div>
-        <Button block size="lg" onClick={breakDown} disabled={loading || text.trim().length < 2}>
-          <Sparkles size={20} /> {loading ? 'Estimating…' : 'Break it down'}
+        <Button block size="lg" onClick={breakDown} disabled={text.trim().length < 2}>
+          <Sparkles size={20} /> Break it down
         </Button>
-        {loading && (
-          <div className="space-y-2" aria-busy="true" aria-label="Estimating nutrition">
-            <Skeleton className="h-16" />
-            <Skeleton className="h-16" />
-            <Skeleton className="h-16" />
-          </div>
-        )}
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" className="flex-1" onClick={() => setItems([])}>
             <Search size={18} /> Search foods
@@ -123,11 +110,8 @@ export default function FoodEntryScreen() {
         </div>
         <QuickPicks date={date} onPick={applySaved} onRepeat={(entries) => {
           setItems(entries.map((e) => ({ meal: (e.meal as MealName), name: e.name, quantity: e.quantity, unit: e.unit, gramsEst: e.gramsEst, calories: e.calories, proteinG: e.proteinG, carbsG: e.carbsG, fatG: e.fatG, fiberG: e.fiberG, confidence: Math.max(0.8, e.confidence), assumptions: e.assumptions ?? '', key: newId(), source: 'saved' })));
-          setSource({ kind: 'saved' });
         }} />
-        <p className="text-xs text-muted">
-          With AI on, your food text (no name or personal details) is sent to our server and Claude to estimate nutrition. Everything else stays on this device.
-        </p>
+        <p className="text-xs text-muted">Estimates come from LevelUp's built-in food list and are calculated on this device. Nothing you type leaves your phone.</p>
       </div>
     </div>
   );
@@ -248,14 +232,12 @@ function Review({
   date,
   items,
   setItems,
-  source,
   onBack,
   defaultMeal,
 }: {
   date: string;
   items: ReviewItem[];
   setItems: (f: (cur: ReviewItem[] | null) => ReviewItem[] | null) => void;
-  source: { kind: 'ai' | 'offline' | 'saved'; reason?: AIFailure };
   onBack: () => void;
   defaultMeal: MealName;
 }) {
@@ -273,6 +255,7 @@ function Review({
   const totals = sumMacros(items);
   const dayTotals = sumMacros([...already, ...items]);
   const lowConf = items.filter((i) => i.confidence < 0.5).length;
+  const unmatched = items.filter((i) => i.calories === 0 && i.confidence < 0.2).length;
 
   async function save() {
     setSaving(true);
@@ -329,17 +312,17 @@ function Review({
         </div>
       </header>
       <div className="flex-1 space-y-4 px-4 pb-4 pt-3">
-        {source.kind === 'ai' && items.length > 0 && (
-          <Notice tone="ai">
-            <span className="font-semibold">AI estimates.</span> Portions and recipes vary — check the numbers and adjust anything that looks off.
+        {items.length > 0 && (
+          <Notice>
+            <span className="font-semibold">Estimates.</span> Portions and recipes vary — check the numbers and adjust anything that looks off.
           </Notice>
         )}
-        {source.kind === 'offline' && (
-          <Notice tone="caution" icon={<WifiOff size={18} />}>
-            <span className="font-semibold">Offline estimate.</span> {failureMessage(source.reason ?? 'error')} Items we couldn't match are flagged for you to fill in.
+        {unmatched > 0 && (
+          <Notice tone="caution">
+            {unmatched} item{unmatched === 1 ? ' isn’t' : 's aren’t'} in the food list yet — tap {unmatched === 1 ? 'it' : 'them'} to enter calories, or swap for a similar food.
           </Notice>
         )}
-        {lowConf > 0 && <p className="text-sm text-caution">{lowConf} item{lowConf === 1 ? '' : 's'} marked “check this”.</p>}
+        {lowConf > unmatched && <p className="text-sm text-caution">{lowConf - unmatched} item{lowConf - unmatched === 1 ? '' : 's'} marked “check this”.</p>}
 
         {groupByMeal(items).map((g) => {
           const t = sumMacros(g.items);

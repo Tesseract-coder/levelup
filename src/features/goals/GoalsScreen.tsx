@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Dumbbell, Lightbulb, ListChecks, Pencil, Scale, Sparkles, Utensils } from 'lucide-react';
+import { ArrowLeft, Dumbbell, Lightbulb, ListChecks, Pencil, Scale, Utensils } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button, Card, Chip, IconButton, Input, Notice, PageHeader, SectionHeader, Skeleton } from '@/components/ui';
@@ -11,7 +10,6 @@ import { ageFromBirthYear, calorieFloor, computeTargets, formatWeight, GOAL_LABE
 import { sumMacros } from '@/domain/nutrition';
 import { calorieSuggestion, habitSuggestions, localMealIdeas, workoutSuggestions, type Suggestion } from '@/domain/suggestions';
 import { ALL_PRESETS, customDef, presetToDef } from '@/domain/presets';
-import { suggestMeals } from '@/lib/ai';
 import { refresh } from '@/lib/queryClient';
 import { useUI } from '@/stores/ui';
 
@@ -173,25 +171,15 @@ function MealIdeas({ goal, diet, avoid }: { goal: Goal; diet: Parameters<typeof 
   const t = sumMacros(food);
   const gap = Math.max(0, goal.proteinTarget - t.proteinG);
   const kcalLeft = goal.calorieTarget - t.calories;
-  const local = localMealIdeas(diet, avoid, gap, kcalLeft);
-  const ai = useQuery({
-    queryKey: ['mealIdeas', gap, Math.round(kcalLeft / 50), diet, avoid.join(',')],
-    enabled: gap >= 15,
-    retry: false,
-    queryFn: () => suggestMeals({ goal: GOAL_LABELS[goal.type].label, diet, avoid, proteinGapG: gap, caloriesLeft: kcalLeft }),
-  });
+  const ideas = localMealIdeas(diet, avoid, gap, kcalLeft);
   if (gap < 15) return null;
-  const ideas = ai.data?.length ? ai.data.map((i) => ({ name: i.name, serving: i.description, proteinG: i.proteinG, calories: i.calories })) : local;
   return (
     <Card>
       <h2 className="flex items-center gap-2 font-bold">
         <Utensils size={18} className="text-protein" aria-hidden /> You need {gap} g more protein today
       </h2>
       <p className="mb-3 text-sm text-muted">{kcalLeft > 0 ? `${kcalLeft.toLocaleString()} kcal left. ` : ''}Options that match your diet preference:</p>
-      {ai.isLoading ? (
-        <Skeleton className="h-24" />
-      ) : (
-        <ul className="space-y-2">
+      <ul className="space-y-2">
           {ideas.map((i) => (
             <li key={i.name} className="flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2">
               <span className="flex-1">
@@ -204,11 +192,8 @@ function MealIdeas({ goal, diet, avoid }: { goal: Goal; diet: Parameters<typeof 
               </span>
             </li>
           ))}
-        </ul>
-      )}
-      <p className="mt-2 flex items-center gap-1 text-xs text-muted">
-        {ai.data?.length ? <><Sparkles size={12} /> AI ideas · estimates</> : 'From the built-in food list · estimates'}
-      </p>
+      </ul>
+      <p className="mt-2 text-xs text-muted">From the built-in food list · estimates</p>
     </Card>
   );
 }

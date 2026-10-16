@@ -1,8 +1,7 @@
 import clsx from 'clsx';
-import { Award, ChevronRight, Database, Download, FileUp, Info, Moon, ShieldCheck, Sparkles, Target, Timer, Trash2, Upload } from 'lucide-react';
+import { Award, ChevronRight, Database, Download, FileUp, Info, Moon, ShieldCheck, Target, Timer, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { useQuery } from '@tanstack/react-query';
 import { Button, Card, Chip, Input, Notice, PageHeader, Segmented, SectionHeader, Toggle } from '@/components/ui';
 import { repo } from '@/db';
 import type { ActivityLevel, DietPreference, Settings } from '@/db/types';
@@ -11,7 +10,6 @@ import { ACTIVITY_LABELS, cmToFtIn, ftInToCm } from '@/domain/targets';
 import { addDays, WEEKDAY_NAMES } from '@/domain/dates';
 import { computeBadges } from '@/domain/badges';
 import { exportCSV, exportJSON, importJSON } from '@/lib/exportData';
-import { aiHealth } from '@/lib/ai';
 import { refresh } from '@/lib/queryClient';
 import { useUI } from '@/stores/ui';
 import { requestNotificationPermission } from '@/features/reminders/useReminders';
@@ -94,8 +92,8 @@ export default function ProfileScreen() {
 
         <Milestones />
 
-        <SectionHeader title="AI & privacy" />
-        <AIPrivacy s={s} />
+        <SectionHeader title="Privacy" />
+        <PrivacyCard />
 
         <SectionHeader title="Your data" />
         <DataCard />
@@ -107,7 +105,7 @@ export default function ProfileScreen() {
             <p className="mt-1 text-muted">LevelUp provides general fitness and nutrition guidance. Calorie and macro numbers are estimates. If you have a medical condition, are pregnant, or have a history of disordered eating, please talk to a qualified professional before changing your diet or training.</p>
           </Notice>
           <p className="text-muted">
-            Health Connect / Apple Health import is planned as a future integration; for now steps are entered manually. No ads, no trackers, no paywalls.
+            Health Connect / Apple Health import is planned as a future integration; for now steps are entered manually. No ads, no trackers, no paywalls — all estimates are calculated on your device.
           </p>
           <p className="text-muted">LevelUp v{import.meta.env.VITE_APP_VERSION ?? '0.1.0'}</p>
         </Card>
@@ -254,17 +252,14 @@ function Milestones() {
   );
 }
 
-function AIPrivacy({ s }: { s: Settings }) {
-  const health = useQuery({ queryKey: ['aiHealth'], queryFn: aiHealth, staleTime: 60_000 });
+function PrivacyCard() {
   return (
-    <Card className="space-y-3">
-      <Toggle checked={s.aiEnabled} onChange={(aiEnabled) => update({ aiEnabled })} label="Use AI for food parsing & summaries" description={health.data ? (health.data.ai ? 'AI server connected' : 'AI server not configured — using offline estimates') : 'Checking AI server…'} />
-      <div className="flex gap-2 rounded-xl bg-surface-2 p-3 text-sm">
-        <Sparkles size={16} className="mt-0.5 shrink-0 text-accent-ink" aria-hidden />
+    <Card>
+      <div className="flex gap-3 text-sm">
+        <ShieldCheck size={18} className="mt-0.5 shrink-0 text-good" aria-hidden />
         <div className="space-y-1 text-muted">
-          <p><span className="font-semibold text-ink">What's sent:</span> only the food text you type, the names of your tracked activities, or pre-computed summary numbers — never your name, email, body stats or history.</p>
-          <p><span className="font-semibold text-ink">Where:</span> to the LevelUp server, which forwards it to Anthropic's Claude API. Nothing is sold or used for ads.</p>
-          <p><span className="font-semibold text-ink">Everything else</span> (logs, weight, goals) stays on this device unless you export it.</p>
+          <p><span className="font-semibold text-ink">Everything stays on this device.</span> Your logs, weight, goals and notes are stored in this browser and never sent anywhere.</p>
+          <p>No accounts, no servers, no trackers or analytics. Use Export below to keep your own backup.</p>
         </div>
       </div>
     </Card>

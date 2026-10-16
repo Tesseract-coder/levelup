@@ -89,7 +89,6 @@ export default function DiaryScreen() {
                           <span className="min-w-0 flex-1">
                             <span className="flex items-center gap-1.5 font-medium">
                               <span className="truncate">{e.name}</span>
-                              {e.source === 'ai' && <Sparkles size={14} className="shrink-0 text-accent-ink" aria-label="AI estimate" />}
                               {e.confidence < 0.5 && <span className="shrink-0 rounded-full bg-caution-soft px-1.5 text-[11px] font-bold text-caution">check</span>}
                             </span>
                             <span className="tabular block text-sm text-muted">

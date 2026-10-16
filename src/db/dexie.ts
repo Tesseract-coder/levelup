@@ -6,7 +6,6 @@ import type {
   FoodEntry,
   Goal,
   MoodLog,
-  ParseCacheEntry,
   SavedFood,
   Settings,
   SleepLog,
@@ -15,7 +14,7 @@ import type {
 } from './types';
 
 /** Bump when the stored shape changes; add a `.version(n).upgrade()` step below. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export class LevelUpDB extends Dexie {
   profile!: EntityTable<UserProfile, 'id'>;
@@ -29,7 +28,6 @@ export class LevelUpDB extends Dexie {
   sleepLogs!: EntityTable<SleepLog, 'id'>;
   moodLogs!: EntityTable<MoodLog, 'id'>;
   summaries!: EntityTable<Summary, 'id'>;
-  parseCache!: EntityTable<ParseCacheEntry, 'key'>;
 
   constructor(name = 'levelup') {
     super(name);
@@ -47,8 +45,9 @@ export class LevelUpDB extends Dexie {
       summaries: 'id, kind, rangeStart',
       parseCache: 'key, createdAt',
     });
-    // Example of a future migration:
-    // this.version(2).stores({ ... }).upgrade(tx => tx.table('foodEntries').toCollection().modify(e => { ... }));
+    // v2: AI parsing removed — drop the parse cache table.
+    this.version(2).stores({ parseCache: null });
+    // Future migrations: this.version(3).stores({ ... }).upgrade(tx => tx.table('…').toCollection().modify(…));
   }
 }
 

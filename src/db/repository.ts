@@ -7,7 +7,6 @@ import type {
   Goal,
   ID,
   MoodLog,
-  ParseCacheEntry,
   SavedFood,
   Settings,
   SleepLog,
@@ -103,10 +102,6 @@ export interface Repository {
   restore<T extends TableName>(table: T, record: RecordOf<T>): Promise<void>;
 
   rangeData(start: DateKey, end: DateKey): Promise<RangeData>;
-
-  // AI parse cache (identical requests are answered locally)
-  getParseCache(key: string): Promise<ParseCacheEntry | undefined>;
-  putParseCache(entry: ParseCacheEntry): Promise<void>;
 
   // data portability
   exportAll(): Promise<ExportBundle>;

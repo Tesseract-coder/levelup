@@ -1,17 +1,15 @@
-import { Sparkles, Trash2, WifiOff } from 'lucide-react';
+import { Sparkles, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import type { ParsedActivityEntry } from '@shared/sanitize';
 import { Sheet } from '@/components/Sheet';
 import { useCloseSheet } from '@/components/sheetHistory';
 import { ActivityIcon } from '@/components/icons';
-import { Button, IconButton, Notice, Skeleton } from '@/components/ui';
+import { Button, IconButton } from '@/components/ui';
 import { repo } from '@/db';
 import { useActivities, useLatestWeight } from '@/hooks/data';
-import { parseActivityAI } from '@/lib/ai';
 import { newId } from '@/lib/id';
 import { refresh } from '@/lib/queryClient';
 import { useUI } from '@/stores/ui';
-import { parseActivityLocally } from '@/domain/localActivityParser';
+import { parseActivityLocally, type ParsedActivityEntry } from '@/domain/localActivityParser';
 import { caloriesBurned } from '@/domain/presets';
 import { minToHm, hmToMin } from '@/domain/dates';
 
@@ -22,21 +20,9 @@ export default function ActivityTextSheet({ date }: { date: string }) {
   const { data: latest } = useLatestWeight();
   const [text, setText] = useState('');
   const [entries, setEntries] = useState<(ParsedActivityEntry & { key: string })[] | null>(null);
-  const [offline, setOffline] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  async function parse() {
-    setLoading(true);
-    let res: ParsedActivityEntry[];
-    try {
-      res = await parseActivityAI(text, acts.map((a) => ({ id: a.id, name: a.name, kind: a.kind, unit: a.unit })));
-      setOffline(false);
-    } catch {
-      res = parseActivityLocally(text, acts);
-      setOffline(true);
-    }
-    setEntries(res.map((e) => ({ ...e, key: newId() })));
-    setLoading(false);
+  function parse() {
+    setEntries(parseActivityLocally(text, acts).map((e) => ({ ...e, key: newId() })));
   }
 
   const savable = (entries ?? []).filter((e) => (e.activityId || e.kind === 'weight') && (e.durationMin || e.value));
@@ -70,8 +56,8 @@ export default function ActivityTextSheet({ date }: { date: string }) {
         title="Describe your day"
         description="One line is enough. You'll review everything before it's saved."
         footer={
-          <Button block onClick={parse} disabled={loading || text.trim().length < 3}>
-            <Sparkles size={18} /> {loading ? 'Reading…' : 'Turn into entries'}
+          <Button block onClick={parse} disabled={text.trim().length < 3}>
+            <Sparkles size={18} /> Turn into entries
           </Button>
         }
       >
@@ -87,7 +73,6 @@ export default function ActivityTextSheet({ date }: { date: string }) {
           placeholder="e.g. Today I cycled 40 min, learned React for 1 hour, slept 6.5 hrs, drank 2 L water"
           className="w-full rounded-2xl border border-line bg-surface p-3 leading-relaxed"
         />
-        {loading && <Skeleton className="mt-3 h-24" />}
       </Sheet>
     );
   }
@@ -107,13 +92,7 @@ export default function ActivityTextSheet({ date }: { date: string }) {
         </div>
       }
     >
-      {offline && (
-        <div className="mb-3">
-          <Notice tone="caution" icon={<WifiOff size={18} />}>
-            Parsed offline with simple rules — double-check the matches.
-          </Notice>
-        </div>
-      )}
+      <p className="mb-3 text-sm text-muted">Check the matches — change any activity or number before saving.</p>
       {entries.length === 0 && <p className="text-muted">We couldn't find any activities in that note. Try mentioning durations, e.g. “ran 30 min”.</p>}
       <ul className="space-y-2">
         {entries.map((e) => {

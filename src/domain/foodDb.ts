@@ -1,5 +1,5 @@
 /**
- * Small bundled food database used for offline estimates and as the fallback when AI parsing fails.
+ * Bundled food database used to estimate nutrition from free-text food descriptions.
  * Values are typical home-style preparations per 100 g (cooked where relevant), compiled from
  * IFCT 2017 / USDA FoodData Central ballpark figures. They are estimates and always shown as such.
  */

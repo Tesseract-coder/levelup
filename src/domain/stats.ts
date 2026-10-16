@@ -1,6 +1,5 @@
 /**
- * Deterministic stats engine. Every number shown in Insights and in summaries comes from here —
- * the AI only phrases these numbers, it never computes them.
+ * Deterministic stats engine. Every number shown in Insights and in summaries comes from here.
  */
 import type { ActivityDef, DateKey, Goal, ScoreComponent, Settings } from '@/db/types';
 import type { RangeData } from '@/db/repository';

@@ -1,8 +1,19 @@
-import type { ParsedActivityEntry } from '@shared/sanitize';
+export interface ParsedActivityEntry {
+  phrase: string;
+  kind: 'workout' | 'habit' | 'sleep' | 'water' | 'weight' | 'unknown';
+  activityId: string | null;
+  activityName: string;
+  durationMin?: number;
+  distanceKm?: number;
+  value?: number;
+  unit?: string;
+  intensity?: 'easy' | 'moderate' | 'hard';
+  confidence: number;
+}
 import type { ActivityDef } from '@/db/types';
 import { keywordsFor } from './presets';
 
-/** Offline parser for notes like "cycled 40 min, learned React for 1 hour, slept 6.5 hrs, drank 2 L water". */
+/** On-device parser for notes like "cycled 40 min, learned React for 1 hour, slept 6.5 hrs, drank 2 L water". */
 
 function minutesIn(s: string): number | undefined {
   let total = 0;

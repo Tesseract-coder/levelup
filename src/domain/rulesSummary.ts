@@ -1,10 +1,31 @@
 /**
- * Rule-based coaching. Turns computed RangeStats into:
- *  - `facts`: short strings holding every number the summary may mention (the AI's only source of numbers)
- *  - candidate wins / misses / improvements (fact ids) in priority order
- *  - a complete fallback summary used when AI is off, offline, or fails validation.
+ * Rule-based coaching. Turns computed RangeStats into a goal-aware summary:
+ *  - `facts`: stat lines holding every number the summary mentions (shown as "the numbers behind this summary";
+ *    a unit test checks that every number in the text appears in them)
+ *  - prioritised wins / misses / improvements and a next focus (optionally a one-tap habit).
  */
-import type { Fact } from '@shared/sanitize';
+/** A stat line holding numbers the summary may quote. Shown to the user as "the numbers behind this summary". */
+export interface Fact {
+  id: string;
+  text: string;
+}
+
+/** Pulls every number out of a string ("1,800 kcal", "102%", "6.5 h" → [1800, 102, 6.5]). */
+export function extractNumbers(text: string): number[] {
+  const out: number[] = [];
+  for (const m of text.matchAll(/(?<![\w.])-?\d[\d,]*(?:\.\d+)?/g)) {
+    const n = parseFloat(m[0].replace(/,/g, ''));
+    if (Number.isFinite(n)) out.push(n);
+  }
+  return out;
+}
+
+/** Numbers in `text` that don't appear in any stat line (empty = every number is backed by data). */
+export function ungroundedNumbers(text: string, facts: Fact[]): number[] {
+  const allowed = new Set<number>();
+  for (const f of facts) for (const n of extractNumbers(f.text)) allowed.add(n);
+  return extractNumbers(text).filter((n) => !allowed.has(n));
+}
 import type { GoalType, NextFocus, SummaryItem } from '@/db/types';
 import type { RangeStats } from './stats';
 
@@ -14,7 +35,6 @@ export interface RuleSummary {
   misses: SummaryItem[];
   improvements: SummaryItem[];
   nextFocus: NextFocus;
-  candidates: { wins: string[]; misses: string[]; improvements: string[]; focus: string | null };
 }
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
@@ -201,6 +221,5 @@ export function buildRuleSummary(kind: 'day' | 'week', s: RangeStats, prev: Rang
     misses: misses.slice(0, 4).map(strip),
     improvements: improvements.slice(0, 3).map(strip),
     nextFocus,
-    candidates: { wins: wins.map((w) => w.id), misses: misses.map((m) => m.id), improvements: improvements.map((i) => i.id), focus: top.id },
   };
 }

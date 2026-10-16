@@ -22,7 +22,7 @@ test('a full day of food becomes an editable per-item breakdown with totals vs t
   await page.getByLabel('What did you eat?').fill(DAY);
   await page.getByRole('button', { name: 'Break it down' }).click();
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible();
-  await expect(page.getByText('Offline estimate.')).toBeVisible(); // no AI server in tests
+  await expect(page.getByText(/Estimates\./)).toBeVisible();
   for (const meal of ['Breakfast', 'Lunch', 'Snacks', 'Dinner']) await expect(page.getByRole('heading', { name: meal })).toBeVisible();
   await expect(page.locator('li', { hasText: 'Boiled egg' }).getByText(/kcal/)).toBeVisible();
   await expect(page.getByText('Day total with these')).toBeVisible();

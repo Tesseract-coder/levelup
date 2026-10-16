@@ -17,7 +17,7 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "types": ["vite/client", "vite-plugin-pwa/client"],
-    "paths": { "@/*": ["./src/*"], "@shared/*": ["./shared/*"] }
+    "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "shared", "tests/unit"]
+  "include": ["src", "tests/unit"]
 }

@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Info, Minus, Plus, Sparkles } from 'lucide-react';
+import { Info, Minus, Plus } from 'lucide-react';
 import { forwardRef, useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'soft' | 'danger';
@@ -261,7 +261,7 @@ export function ProgressBar({ value, color = 'var(--accent)', label }: { value: 
   );
 }
 
-/** Subtle marker that a number is an estimate (AI or formula). Tap to see why. */
+/** Subtle marker that a number is an estimate. Tap to see why. */
 export function EstimateBadge({ note }: { note?: string }) {
   const [open, setOpen] = useState(false);
   return (
@@ -302,7 +302,7 @@ export function Skeleton({ className }: { className?: string }) {
   return <div className={clsx('skeleton', className)} aria-hidden />;
 }
 
-export function Notice({ tone = 'info', children, icon }: { tone?: 'info' | 'caution' | 'good' | 'ai'; children: ReactNode; icon?: ReactNode }) {
+export function Notice({ tone = 'info', children, icon }: { tone?: 'info' | 'caution' | 'good'; children: ReactNode; icon?: ReactNode }) {
   return (
     <div
       className={clsx(
@@ -310,16 +310,15 @@ export function Notice({ tone = 'info', children, icon }: { tone?: 'info' | 'cau
         tone === 'info' && 'bg-surface-2 text-ink',
         tone === 'caution' && 'bg-caution-soft text-ink',
         tone === 'good' && 'bg-good-soft text-ink',
-        tone === 'ai' && 'bg-accent-soft text-ink',
       )}
     >
       <span
         className={clsx(
           'mt-0.5 shrink-0',
-          tone === 'caution' ? 'text-caution' : tone === 'good' ? 'text-good' : tone === 'ai' ? 'text-accent-ink' : 'text-muted',
+          tone === 'caution' ? 'text-caution' : tone === 'good' ? 'text-good' : 'text-muted',
         )}
       >
-        {icon ?? (tone === 'ai' ? <Sparkles size={18} /> : <Info size={18} />)}
+        {icon ?? <Info size={18} />}
       </span>
       <div className="min-w-0 flex-1">{children}</div>
     </div>

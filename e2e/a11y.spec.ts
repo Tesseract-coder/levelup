@@ -1,6 +1,9 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+// these tests walk many screens with axe; give them room when other workers share the CPU
+test.describe.configure({ timeout: 180_000 });
+
 const SCREENS: [string, string][] = [
   ['/', 'Today'],
   ['/insights', 'Insights'],

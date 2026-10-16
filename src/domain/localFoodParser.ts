@@ -1,9 +1,27 @@
-import type { MealName, ParsedFoodItem } from '@shared/sanitize';
+import type { Meal } from '@/db/types';
+
+type MealName = Meal;
+
+/** One parsed item, shown on the review screen before saving. */
+export interface ParsedFoodItem {
+  meal: Meal;
+  name: string;
+  quantity: number;
+  unit: string;
+  gramsEst: number;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  fiberG?: number;
+  confidence: number;
+  assumptions: string;
+}
 import { FOODS, UNIT_ALIASES, gramsFor, macrosFor, type FoodRef } from './foodDb';
 
 /**
- * Offline parser: turns "Lunch: 2 rotis, 1 katori dal and curd" into estimated items
- * using the bundled food database. Used when AI is unavailable or fails.
+ * On-device parser: turns "Lunch: 2 rotis, 1 katori dal and curd" into estimated items
+ * using the bundled food database.
  */
 
 const MEAL_PATTERNS: [RegExp, MealName][] = [
@@ -128,7 +146,7 @@ export function parseChunk(chunk: string, meal: MealName): ParsedFoodItem {
       carbsG: 0,
       fatG: 0,
       confidence: 0.1,
-      assumptions: 'Not in the offline food list — please enter calories and macros.',
+      assumptions: 'Not in the food list yet — please enter calories and macros.',
     };
   }
   const { food, exact } = hit;
@@ -143,7 +161,6 @@ export function parseChunk(chunk: string, meal: MealName): ParsedFoodItem {
     perUnit && u !== 'g' && u !== 'ml' ? `1 ${u} ≈ ${perUnit} g` : null,
     sizeFactor !== 1 ? `size adjusted ×${sizeFactor}` : null,
     exact ? null : `closest match: ${food.name}`,
-    'offline estimate',
   ]
     .filter(Boolean)
     .join('; ');
@@ -208,7 +225,7 @@ export function itemFromFood(food: FoodRef, meal: MealName, quantity = 1, unit =
     gramsEst: grams,
     ...m,
     confidence: 0.7,
-    assumptions: `${quantity} ${u} ≈ ${grams} g (offline database)`,
+    assumptions: `${quantity} ${u} ≈ ${grams} g`,
   };
 }
 

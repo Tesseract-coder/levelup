@@ -135,10 +135,21 @@ export function SummaryBody({ summary, onRegenerate, busy }: { summary: Summary;
       <Section emoji="🎯" title="What to improve" items={summary.improvements} tone="accent" numbered />
       <FocusCard summary={summary} />
 
+      {summary.facts && summary.facts.length > 0 && (
+        <details className="rounded-[var(--radius-card)] bg-surface p-4 shadow-card">
+          <summary className="min-h-8 cursor-pointer font-semibold">The numbers behind this summary</summary>
+          <ul className="mt-2 space-y-1.5 text-sm text-muted">
+            {summary.facts.map((f) => (
+              <li key={f.id} className="tabular">{f.text}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+
       <p className="flex items-center justify-between gap-2 px-1 text-xs text-muted">
         <span className="flex items-center gap-1">
           <Sparkles size={12} aria-hidden />
-          {summary.generatedBy === 'ai' ? 'Phrased by AI from your computed stats — every number is checked against your data.' : 'Rule-based summary computed on your device.'}
+          Computed on your device from your own logs.
         </span>
         {onRegenerate && (
           <button type="button" onClick={onRegenerate} disabled={busy} className="flex min-h-11 shrink-0 items-center gap-1 font-semibold text-accent-ink">
