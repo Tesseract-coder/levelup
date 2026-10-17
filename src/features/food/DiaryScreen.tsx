@@ -72,8 +72,8 @@ export default function DiaryScreen() {
               <section key={g.meal}>
                 <div className="mb-2 flex items-center justify-between px-1">
                   <h2 className="font-bold">{MEAL_LABEL[g.meal]}</h2>
-                  <div className="flex items-center gap-1">
-                    <span className="tabular text-sm text-muted">{t.calories.toLocaleString()} kcal · {t.proteinG} g P</span>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <span className="tabular whitespace-nowrap text-sm text-muted">{t.calories.toLocaleString()} kcal · {t.proteinG} g P</span>
                     {date !== today && (
                       <IconButton label={`Copy ${MEAL_LABEL[g.meal]} to today`} onClick={() => copyMeal(g.items)}>
                         <Copy size={18} />
@@ -91,11 +91,13 @@ export default function DiaryScreen() {
                               <span className="truncate">{e.name}</span>
                               {e.confidence < 0.5 && <span className="shrink-0 rounded-full bg-caution-soft px-1.5 text-[11px] font-bold text-caution">check</span>}
                             </span>
-                            <span className="tabular block text-sm text-muted">
+                            <span className="tabular block truncate text-sm text-muted">
                               {e.quantity} {e.unit} · P {Math.round(e.proteinG)} · C {Math.round(e.carbsG)} · F {Math.round(e.fatG)}
                             </span>
                           </span>
-                          <span className="tabular font-semibold">{Math.round(e.calories)}</span>
+                          <span className="tabular shrink-0 whitespace-nowrap font-semibold">
+                            {Math.round(e.calories)} <span className="text-xs font-medium text-muted">kcal</span>
+                          </span>
                         </button>
                         <IconButton label={`Delete ${e.name}`} onClick={() => removeWithUndo('foodEntries', e.id, e.name)}>
                           <Trash2 size={18} />
@@ -108,8 +110,8 @@ export default function DiaryScreen() {
             );
           })
         )}
-        <div className="grid grid-cols-2 gap-2">
-          <Button onClick={() => navigate(`/food/new?date=${date}`)}>
+        <div className="grid grid-cols-[1fr_auto] gap-2">
+          <Button className="whitespace-nowrap" onClick={() => navigate(`/food/new?date=${date}`)}>
             <Sparkles size={18} /> Describe food
           </Button>
           <Button variant="secondary" onClick={() => openSheet({ type: 'manualFood', date })}>

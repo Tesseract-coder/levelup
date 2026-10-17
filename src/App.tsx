@@ -110,7 +110,7 @@ export function App() {
   if (!settings.onboarded && !onboarding) return <Navigate to="/onboarding" replace />;
 
   return (
-    <div className="mx-auto min-h-dvh max-w-[480px] bg-canvas">
+    <div className="mx-auto min-h-dvh max-w-[480px] overflow-x-clip bg-canvas">
       <Routes>
         <Route element={<FocusLayout />}>
           <Route path="/onboarding" element={<Onboarding />} />

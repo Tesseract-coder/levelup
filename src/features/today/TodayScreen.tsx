@@ -39,8 +39,8 @@ export function TodayScreen() {
       <header className="px-4 pt-4">
         <p className="text-sm font-medium text-muted">{isToday ? greeting() + (profile?.name ? `, ${profile.name}` : '') : 'Looking back'}</p>
         <div className="flex items-center gap-1">
-          <h1 className="flex-1 text-2xl font-extrabold tracking-tight">{formatDay(date, today)}</h1>
-          <Link to={`/summary/day/${date}`} className="flex min-h-11 items-center gap-1 rounded-full bg-accent-soft px-4 text-sm font-semibold text-accent-ink">
+          <h1 className="min-w-0 flex-1 truncate text-2xl font-extrabold tracking-tight">{formatDay(date, today)}</h1>
+          <Link to={`/summary/day/${date}`} className="flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-accent-soft px-4 text-sm font-semibold text-accent-ink">
             <Sparkles size={16} aria-hidden /> Summary
           </Link>
         </div>
@@ -66,7 +66,7 @@ export function TodayScreen() {
               <Link to={`/summary/week/${date}`} className="block">
                 <Card className="flex items-center gap-3 bg-accent text-on-accent">
                   <Sparkles size={22} aria-hidden />
-                  <span className="flex-1">
+                  <span className="min-w-0 flex-1">
                     <span className="block font-bold">Your weekly summary is ready</span>
                     <span className="block text-sm opacity-90">Wins, misses and one focus for next week</span>
                   </span>
@@ -99,14 +99,14 @@ export function TodayScreen() {
 
             <Link to={`/summary/day/${date}`} className="block">
               <Card className="flex items-center gap-3">
-                <span className="grid h-11 w-11 place-items-center rounded-xl bg-accent-soft text-accent-ink">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-ink">
                   <Sparkles size={20} aria-hidden />
                 </span>
-                <span className="flex-1">
+                <span className="min-w-0 flex-1">
                   <span className="block font-semibold">{isToday ? 'How did today go?' : 'Daily summary'}</span>
                   <span className="block text-sm text-muted">Score, wins, misses and one thing to improve</span>
                 </span>
-                <ChevronRight size={20} className="text-muted" aria-hidden />
+                <ChevronRight size={20} className="shrink-0 text-muted" aria-hidden />
               </Card>
             </Link>
           </>
@@ -305,7 +305,7 @@ function HabitItem({ row, date }: { row: HabitRow; date: string }) {
         <span className="tabular block truncate text-sm text-muted">{sub}</span>
       </button>
       {def.trackingType === 'avoid' ? (
-        <div className="flex gap-1">
+        <div className="flex shrink-0 gap-1">
           <button
             type="button"
             aria-label={`Yes, avoided ${def.name}`}
@@ -356,18 +356,18 @@ function WorkoutsSection({ view, date }: { view: NonNullable<ReturnType<typeof c
             {view.workouts.map(({ def, log }) => (
               <li key={log.id}>
                 <button type="button" onClick={() => openSheet({ type: 'workout', logId: log.id, date })} className="flex min-h-16 w-full items-center gap-3 rounded-2xl px-2 text-left">
-                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-activity-soft text-activity">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-activity-soft text-activity">
                     <ActivityIcon name={def.icon} />
                   </span>
-                  <span className="flex-1">
-                    <span className="block font-semibold">{def.name}</span>
-                    <span className="tabular block text-sm text-muted">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold">{def.name}</span>
+                    <span className="tabular block truncate text-sm text-muted">
                       {log.durationMin} min · {log.intensity ?? 'moderate'}
                       {log.distanceKm ? ` · ${log.distanceKm} km` : ''}
                       {log.caloriesBurnedEst ? ` · ≈${log.caloriesBurnedEst} kcal` : ''}
                     </span>
                   </span>
-                  <ChevronRight size={18} className="text-muted" aria-hidden />
+                  <ChevronRight size={18} className="shrink-0 text-muted" aria-hidden />
                 </button>
               </li>
             ))}
@@ -380,12 +380,12 @@ function WorkoutsSection({ view, date }: { view: NonNullable<ReturnType<typeof c
                 key={w.def.id}
                 type="button"
                 onClick={() => openSheet({ type: 'workout', activityId: w.def.id, date })}
-                className="flex min-h-11 items-center gap-2 rounded-full border border-line px-3 text-sm font-medium"
+                className="flex min-h-11 max-w-full items-center gap-2 rounded-full border border-line px-3 text-sm font-medium"
               >
-                <Plus size={16} className="text-activity" aria-hidden />
-                {w.def.name}
+                <Plus size={16} className="shrink-0 text-activity" aria-hidden />
+                <span className="truncate">{w.def.name}</span>
                 {w.def.schedule.type === 'weekly' && (
-                  <span className="tabular text-xs text-muted">
+                  <span className="tabular shrink-0 text-xs text-muted">
                     {w.weekCount}/{w.def.schedule.times} wk
                   </span>
                 )}
@@ -418,21 +418,29 @@ function FoodSection({ view, date }: { view: NonNullable<ReturnType<typeof compu
         {groups.length === 0 ? (
           <EmptyState icon={<Apple size={24} />} title="No food logged" body="Describe everything you ate in one go — we'll break it down for you." />
         ) : (
-          <ul>
+          <ul className="divide-y divide-line">
             {groups.map((g) => {
               const kcal = g.items.reduce((t, i) => t + i.calories, 0);
               const p = g.items.reduce((t, i) => t + i.proteinG, 0);
               return (
                 <li key={g.meal}>
-                  <Link to={`/log?date=${date}`} className="flex min-h-14 items-center gap-3 rounded-2xl px-2">
-                    <span className="flex-1">
-                      <span className="block font-semibold">{MEAL_LABEL[g.meal]}</span>
-                      <span className="block truncate text-sm text-muted">{g.items.map((i) => i.name).join(', ')}</span>
+                  <Link to={`/log?date=${date}`} className="flex min-h-16 items-center gap-3 rounded-2xl px-2 py-2.5">
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold">
+                        {MEAL_LABEL[g.meal]}
+                        <span className="ml-1.5 text-xs font-medium text-muted">
+                          {g.items.length} {g.items.length === 1 ? 'item' : 'items'}
+                        </span>
+                      </span>
+                      <span className="line-clamp-2 text-sm leading-snug text-muted">{g.items.map((i) => i.name).join(', ')}</span>
                     </span>
-                    <span className="tabular text-right text-sm">
-                      <span className="block font-bold">{Math.round(kcal).toLocaleString()} kcal</span>
-                      <span className="block text-muted">{Math.round(p)} g protein</span>
+                    <span className="tabular shrink-0 whitespace-nowrap text-right text-sm">
+                      <span className="block font-bold">
+                        {Math.round(kcal).toLocaleString()} <span className="font-medium text-muted">kcal</span>
+                      </span>
+                      <span className="block text-xs text-muted">{Math.round(p)} g protein</span>
                     </span>
+                    <ChevronRight size={18} className="-ml-1 shrink-0 text-muted" aria-hidden />
                   </Link>
                 </li>
               );

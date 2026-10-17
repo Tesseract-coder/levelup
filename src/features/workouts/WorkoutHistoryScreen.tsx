@@ -57,17 +57,17 @@ export default function WorkoutHistoryScreen() {
                   {g.logs.map(({ log, def, pr }) => (
                     <li key={log.id}>
                       <button type="button" onClick={() => openSheet({ type: 'workout', logId: log.id, date: log.date })} className="flex min-h-16 w-full items-center gap-3 rounded-2xl px-2 text-left">
-                        <span className="grid h-11 w-11 place-items-center rounded-xl bg-activity-soft text-activity"><ActivityIcon name={def.icon} /></span>
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-activity-soft text-activity"><ActivityIcon name={def.icon} /></span>
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-2 font-semibold">
-                            {def.name}
-                            {pr && <span className="flex items-center gap-0.5 rounded-full bg-good-soft px-2 text-xs text-good"><Trophy size={12} /> PR</span>}
+                            <span className="truncate">{def.name}</span>
+                            {pr && <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-good-soft px-2 text-xs text-good"><Trophy size={12} /> PR</span>}
                           </span>
                           <span className="tabular block truncate text-sm text-muted">
                             {formatDay(log.date, today)} · {log.durationMin} min{log.distanceKm ? ` · ${log.distanceKm} km` : ''}{log.exercises?.length ? ` · ${log.exercises.length} exercises` : ''}
                           </span>
                         </span>
-                        {log.caloriesBurnedEst ? <span className="tabular text-sm text-muted">≈{log.caloriesBurnedEst} kcal</span> : null}
+                        {log.caloriesBurnedEst ? <span className="tabular shrink-0 whitespace-nowrap text-sm text-muted">≈{log.caloriesBurnedEst} kcal</span> : null}
                       </button>
                     </li>
                   ))}

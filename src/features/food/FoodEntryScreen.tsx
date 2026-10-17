@@ -215,7 +215,7 @@ function QuickPicks({ date, onPick, onRepeat }: { date: string; onPick: (s: Save
                     <span className="block text-sm font-semibold">{r.label}</span>
                     <span className="block truncate text-sm text-muted">{r.entries.map((e) => e.name).join(', ')}</span>
                   </span>
-                  <span className="tabular text-sm font-bold">{Math.round(r.entries.reduce((t, e) => t + e.calories, 0))} kcal</span>
+                  <span className="tabular shrink-0 whitespace-nowrap text-sm font-bold">{Math.round(r.entries.reduce((t, e) => t + e.calories, 0))} kcal</span>
                 </button>
               </li>
             ))}
