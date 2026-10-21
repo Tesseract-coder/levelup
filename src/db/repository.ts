@@ -39,6 +39,10 @@ export interface RangeData {
   sleep: SleepLog[];
   body: BodyLog[];
   mood: MoodLog[];
+  /** Strength data (optional so older callers and tests keep working). */
+  sessions?: StrengthSession[];
+  customExercises?: Exercise[];
+  splitPlans?: SplitPlan[];
 }
 
 export type RecordOf<T extends TableName> = {

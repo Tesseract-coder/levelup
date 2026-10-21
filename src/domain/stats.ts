@@ -6,6 +6,7 @@ import type { RangeData } from '@/db/repository';
 import { addDays, diffDays, hmToMin, rangeKeys, startOfWeek, weekday, WEEKDAY_NAMES } from './dates';
 import { activeFrom, adherence, computeStreak, doneDatesFor, indexLogs, isScheduledOn, type DayIndex } from './habits';
 import { sumMacros } from './nutrition';
+import { strengthRangeStats, type StrengthRangeStats } from './strength/summaryStats';
 
 export interface DayPoint {
   date: DateKey;
@@ -169,6 +170,7 @@ export interface RangeStats {
   sleep: { nights: number; avgHours: number; targetHours: number; under6: number; onTarget: number; bedtimeSdMin: number };
   weight: { entries: number; first: number | null; last: number | null; change: number | null; target: number | null };
   mood: { entries: number; avgEnergy: number | null; energyGoodSleep: number | null; energyLowSleep: number | null };
+  strength: StrengthRangeStats | null;
   score: number;
   breakdown: ScoreComponent[];
 }
@@ -343,7 +345,9 @@ export function computeRangeStats(
   const totalW = included.reduce((t, b) => t + b.weight, 0);
   const score = totalW ? r0((included.reduce((t, b) => t + b.weight * (b.score ?? 0), 0) / totalW) * 100) : 0;
 
-  return { start, end, days: keys.length, goalType: goal?.type ?? null, nutrition, activity, habits: habitStats, sleep, weight, mood, score, breakdown };
+  const strength = data.sessions ? strengthRangeStats(start, end, data.sessions, data.customExercises ?? [], data.splitPlans ?? [], today) : null;
+
+  return { start, end, days: keys.length, goalType: goal?.type ?? null, nutrition, activity, habits: habitStats, sleep, weight, mood, strength, score, breakdown };
 }
 
 /** Daily score trend for charts (each day scored on its own). */

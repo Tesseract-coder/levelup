@@ -162,15 +162,18 @@ export class DexieRepository implements Repository {
   }
 
   async rangeData(start: string, end: string) {
-    const [activities, logs, food, sleep, body, mood] = await Promise.all([
+    const [activities, logs, food, sleep, body, mood, sessions, customExercises, splitPlans] = await Promise.all([
       this.listActivities({ includeArchived: true }),
       this.logsInRange(start, end),
       this.foodInRange(start, end),
       this.sleepInRange(start, end),
       this.bodyInRange(start, end),
       this.moodInRange(start, end),
+      this.sessionsInRange(start, end),
+      this.listCustomExercises(),
+      this.listSplitPlans(),
     ]);
-    return { activities, logs, food, sleep, body, mood };
+    return { activities, logs, food, sleep, body, mood, sessions, customExercises, splitPlans };
   }
 
   // ---------------------------------------------------------------- strength

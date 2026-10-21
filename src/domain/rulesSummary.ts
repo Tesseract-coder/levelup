@@ -37,6 +37,7 @@ export interface RuleSummary {
   nextFocus: NextFocus;
 }
 
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const list = (xs: string[]) => (xs.length <= 2 ? xs.join(' and ') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
@@ -134,6 +135,38 @@ export function buildRuleSummary(kind: 'day' | 'week', s: RangeStats, prev: Rang
       improvements.push({ id: tid, text: `Add ${what} on a rest day — ${a.sessions} of ${a.planned} planned sessions happened.`, p: goal === 'endurance' || goal === 'build_muscle' ? 85 : 70, focus: { text: `Add ${what} on a rest day`, habit: { name: goal === 'build_muscle' ? 'Extra strength session' : 'Rest-day walk', trackingType: 'duration', unit: 'min', target: 20, schedule: { type: 'weekly', times: 2 }, icon: 'walk' } } });
     } else if (prevSessions != null && a.sessions > prevSessions) {
       wins.push({ id: wid, text: `${a.sessions} workout sessions, up from ${prevSessions} last week.`, p: 70 });
+    }
+    // strength detail: PRs, skipped planned days, volume shifts per muscle group
+    const st = s.strength;
+    if (st) {
+      if (st.prs.length) {
+        const shown = st.prs.slice(0, 3).map((p) => `${p.exercise} ${p.detail}`);
+        const pid = add('strength_prs', `${st.prs.length} new personal records: ${st.prs.map((p) => `${p.exercise} ${p.detail} (${p.label.toLowerCase()})`).join('; ')}`);
+        wins.push({ id: pid, text: `${plural(st.prs.length, 'new PR')}: ${list(shown)}${st.prs.length > 3 ? ' and more' : ''}.`, p: 82 });
+      }
+      if (st.missedPlanned.length) {
+        const names = st.missedPlanned.map((m) => `${m.label} (${WEEKDAY_SHORT[new Date(`${m.date}T12:00`).getDay()]})`);
+        const mid = add('strength_missed', `Planned strength days skipped: ${names.join(', ')}`);
+        misses.push({ id: mid, text: st.missedPlanned.length === 1 ? `Planned ${names[0]} skipped.` : `${st.missedPlanned.length} planned strength days skipped: ${list(names)}.`, p: 62 });
+      }
+      const ps = prev?.strength;
+      if (kind === 'week' && ps && ps.sessions > 0 && st.sessions > 0) {
+        const changes = (Object.keys({ ...st.volumeByGroup, ...ps.volumeByGroup }) as (keyof typeof st.volumeByGroup)[])
+          .map((g) => ({ g, now: Math.round(st.volumeByGroup[g] ?? 0), before: Math.round(ps.volumeByGroup[g] ?? 0) }))
+          .filter((c) => c.before >= 500)
+          .map((c) => ({ ...c, pct: Math.round(((c.now - c.before) / c.before) * 100) }));
+        const down = changes.filter((c) => c.pct <= -10 && c.now > 0).sort((x, y) => x.pct - y.pct)[0];
+        const up = changes.filter((c) => c.pct >= 10).sort((x, y) => y.pct - x.pct)[0];
+        const label = (g: string) => g.charAt(0).toUpperCase() + g.slice(1);
+        if (down) {
+          const vid = add('strength_volume_down', `${label(down.g)} volume ${down.now.toLocaleString()} kg vs ${down.before.toLocaleString()} kg last week (down ${-down.pct}%)`);
+          improvements.push({ id: vid, text: `${label(down.g)} volume down ${-down.pct}% vs last week — add a set or two there if it wasn't on purpose.`, p: 50 });
+        }
+        if (up) {
+          const vid = add('strength_volume_up', `${label(up.g)} volume ${up.now.toLocaleString()} kg vs ${up.before.toLocaleString()} kg last week (up ${up.pct}%)`);
+          wins.push({ id: vid, text: `${label(up.g)} volume up ${up.pct}% vs last week.`, p: 45 });
+        }
+      }
     }
     if (goal === 'build_muscle' && a.sessions > 0 && kind === 'week') {
       const tid = add('tip_overload', 'Suggested small step: add 2.5 kg or 1 rep to one main lift next session');
