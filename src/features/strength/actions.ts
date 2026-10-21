@@ -1,5 +1,7 @@
 import { repo } from '@/db';
-import type { ActivityDef, ActivityLog, Exercise, ExercisePref, Intensity, SessionExercise, StrengthIntensity, StrengthSession } from '@/db/types';
+import type { ActivityDef, ActivityLog, DateKey, DayType, Exercise, ExercisePref, Intensity, Routine, SessionExercise, SplitPlan, StrengthIntensity, StrengthSession } from '@/db/types';
+import { exercisesFromRoutine, newSession } from '@/domain/strength/session';
+import { instantiate, plannedWeekdays } from '@/domain/strength/templates';
 import { restFor } from './format';
 import { DEFAULT_STRENGTH_SETTINGS } from '@/config/strength';
 import { WORKOUT_PRESETS, presetToDef } from '@/domain/presets';
@@ -114,4 +116,62 @@ export async function updatePref(exerciseId: string, patch: Partial<ExercisePref
 export async function saveCustomExercise(ex: Exercise) {
   await repo.saveCustomExercise(ex);
   await refresh();
+}
+
+/** Create and persist a new in-progress session (optionally from a routine). Returns its id. */
+export async function startWorkout(o: { date: DateKey; dayTypes: DayType[]; customDayName?: string; mode: 'live' | 'quick'; startedAt?: number; durationMin?: number; routine?: Routine }) {
+  const [sessions, body] = await Promise.all([repo.allSessions(), repo.latestBody()]);
+  const s = newSession({ ...o, dayTypes: o.routine ? o.routine.dayTypes : o.dayTypes, customDayName: o.routine && !o.routine.dayTypes.length ? o.routine.name : o.customDayName, routineId: o.routine?.id, bodyWeightKg: body?.weightKg });
+  if (o.routine) s.exercises = exercisesFromRoutine(o.routine, sessions, false);
+  return startSession(s);
+}
+
+// ------------------------------------------------------------ routines
+
+export async function saveRoutine(r: Routine) {
+  await repo.saveRoutine(r);
+  await refresh();
+}
+
+export async function duplicateRoutine(r: Routine, order: number) {
+  const now = Date.now();
+  const copy: Routine = { ...r, id: newId(), name: `${r.name} (copy)`, order, archived: false, createdAt: now, updatedAt: now, exercises: r.exercises.map((e) => ({ ...e })) };
+  await saveRoutine(copy);
+  return copy;
+}
+
+export async function addTemplate(key: string) {
+  const existing = await repo.listRoutines({ includeArchived: true });
+  const { routines, plan } = instantiate(key, existing.length);
+  for (const r of routines) await repo.saveRoutine(r);
+  await repo.saveSplitPlan(plan);
+  await refresh();
+  return plan;
+}
+
+/**
+ * Activating a split makes its weekdays the Strength activity's schedule, so the existing
+ * habit/score engine treats planned days as scheduled workouts (grace days apply).
+ */
+export async function saveSplit(plan: SplitPlan) {
+  await repo.saveSplitPlan(plan);
+  await syncStrengthSchedule();
+  await refresh();
+}
+
+export async function deleteSplit(id: string) {
+  await repo.remove('splitPlans', id);
+  await syncStrengthSchedule();
+  await refresh();
+}
+
+async function syncStrengthSchedule() {
+  const def = await ensureStrengthDef();
+  const active = (await repo.listSplitPlans()).find((p) => p.active);
+  const days = active ? plannedWeekdays(active) : [];
+  if (days.length) {
+    if (def.schedule.type !== 'weekdays' || def.schedule.days.join() !== days.join()) await repo.saveActivity({ ...def, schedule: { type: 'weekdays', days } });
+  } else if (def.schedule.type === 'weekdays') {
+    await repo.saveActivity({ ...def, schedule: { type: 'weekly', times: Math.max(1, def.schedule.days.length) } });
+  }
 }

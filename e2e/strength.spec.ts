@@ -90,6 +90,16 @@ test('quick-log a past workout', async ({ page }) => {
   await page.getByRole('button', { name: 'Finish' }).click();
   await expect(page.getByRole('heading', { name: /Legs day done/ })).toBeVisible();
   await expect(page.getByText('60', { exact: true })).toBeVisible(); // duration in minutes
+  // save as routine, then start from it
+  await page.getByRole('button', { name: 'Save as routine' }).click();
+  await page.getByLabel('Routine name').fill('My Leg Day');
+  await page.getByRole('button', { name: 'Save routine' }).click();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Start strength workout' }).click();
+  await page.getByRole('button', { name: /My Leg Day/ }).click();
+  const lp2 = page.getByRole('region', { name: 'Leg Press' });
+  await expect(lp2.getByLabel('Leg Press set 1 kg')).toHaveValue('120');
+  await expect(lp2.getByLabel('Leg Press set 1 Reps')).toHaveValue('10');
 });
 
 test.describe('progress with 12 weeks of data', () => {
@@ -129,4 +139,25 @@ test.describe('progress with 12 weeks of data', () => {
     const lb = await page.getByText(/^\d+(\.\d+)? lb$/).first().innerText();
     expect(Math.round(parseFloat(lb) * 0.45359237)).toBe(Math.round(parseFloat(kg)));
   });
+});
+
+test('save a routine, plan it in the weekly split, start it from Today', async ({ page }) => {
+  await onboard(page);
+  await page.getByRole('button', { name: 'Start strength workout' }).click();
+  await page.getByRole('button', { name: 'Routines, starter programs & weekly split →' }).click();
+  await expect(page.getByRole('heading', { name: 'Routines', exact: true, level: 1 })).toBeVisible();
+  await page.getByRole('listitem').filter({ hasText: 'Full body 3×/week' }).getByRole('button', { name: 'Add' }).click();
+  await expect(page.getByRole('heading', { name: 'Weekly split' })).toBeVisible();
+  // plan today's weekday as Full body A
+  const weekday = await page.evaluate(() => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()]);
+  await page.getByLabel(`${weekday} plan`).selectOption({ label: 'Full body A' });
+  await page.getByRole('switch', { name: /Use this split/ }).click();
+  await page.waitForTimeout(500);
+  await page.goto('/');
+  await expect(page.getByText('Planned today')).toBeVisible();
+  await expect(page.getByText('Full body A')).toBeVisible();
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Squat' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Plank' })).toBeVisible();
+  await noHorizontalScroll(page);
 });

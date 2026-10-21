@@ -89,6 +89,9 @@ export default function StrengthInsights() {
           <p className="text-xs text-muted">volume</p>
         </div>
       </Card>
+      <Link to="/routines" className="flex min-h-12 items-center justify-between rounded-2xl bg-surface px-4 font-semibold shadow-card">
+        Routines & weekly split <ChevronRight size={18} className="text-muted" aria-hidden />
+      </Link>
       {m.neglected.map((n) => (
         <Notice key={n.label} tone="caution">
           No {n.label} training in {n.daysSince} days.

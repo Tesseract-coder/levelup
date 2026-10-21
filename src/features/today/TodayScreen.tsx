@@ -7,8 +7,10 @@ import { ActivityIcon } from '@/components/icons';
 import { Button, Card, EmptyState, EstimateBadge, SectionHeader, Skeleton } from '@/components/ui';
 import { useGoal, useProfile, useRangeData, useSelectedDate, useSettings, useToday } from '@/hooks/data';
 import { useUI } from '@/stores/ui';
-import { useInProgressSession } from '@/hooks/strength';
+import { useAllSessions, useInProgressSession, useRoutines, useSplitPlans } from '@/hooks/strength';
 import { dayTitle } from '@/domain/strength/dayTypes';
+import { plannedFor } from '@/domain/strength/templates';
+import { startWorkout } from '@/features/strength/actions';
 import { addDays, formatDay, fromKey, greeting, weekdayShort } from '@/domain/dates';
 import { computeDay, STREAK_LOOKBACK, type HabitRow } from '@/domain/day';
 import { formatValue, scheduleLabel } from '@/domain/habits';
@@ -343,6 +345,12 @@ function StrengthStart({ date }: { date: string }) {
   const openSheet = useUI((s) => s.openSheet);
   const navigate = useNavigate();
   const { data: live } = useInProgressSession();
+  const { data: plans = [] } = useSplitPlans();
+  const { data: routines = [] } = useRoutines();
+  const { data: sessions = [] } = useAllSessions();
+  const today = useToday();
+  const planned = date === today ? plannedFor(plans, fromKey(date).getDay()) : null;
+  const doneToday = sessions.some((s) => s.date === date);
   if (live) {
     return (
       <button type="button" onClick={() => navigate(`/workout/${live.id}`)} className="mb-1 flex min-h-16 w-full items-center gap-3 rounded-2xl bg-accent px-3 text-left text-on-accent">
@@ -357,6 +365,30 @@ function StrengthStart({ date }: { date: string }) {
         </span>
         <ChevronRight size={18} aria-hidden />
       </button>
+    );
+  }
+  if (planned && !doneToday) {
+    const routine = routines.find((r) => r.id === planned.day.routineId);
+    const title = routine?.name ?? planned.day.label ?? dayTitle(planned.day.dayTypes);
+    return (
+      <div className="mb-1 flex items-center gap-3 rounded-2xl bg-activity-soft p-3">
+        <span className="min-w-0 flex-1">
+          <span className="block text-xs font-semibold uppercase tracking-wide text-activity">Planned today</span>
+          <span className="block truncate font-bold">{title}</span>
+        </span>
+        <Button
+          size="sm"
+          onClick={async () => {
+            const id = await startWorkout({ date, dayTypes: planned.day.dayTypes, mode: 'live', routine });
+            navigate(`/workout/${id}${routine ? '' : '?pick=1'}`);
+          }}
+        >
+          <Play size={16} /> Start
+        </Button>
+        <button type="button" onClick={() => openSheet({ type: 'strengthStart', date })} className="min-h-11 text-sm font-semibold text-accent-ink">
+          Other
+        </button>
+      </div>
     );
   }
   return (

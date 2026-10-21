@@ -4,12 +4,11 @@ import { Sheet } from '@/components/Sheet';
 import { useNavigateFromSheets } from '@/components/sheetHistory';
 import { Button, Chip, Input, Segmented, Stepper } from '@/components/ui';
 import type { DateKey, DayType, Routine } from '@/db/types';
-import { useLatestWeight, useToday } from '@/hooks/data';
-import { useAllSessions, useInProgressSession, useRoutines } from '@/hooks/strength';
+import { useToday } from '@/hooks/data';
+import { useInProgressSession, useRoutines } from '@/hooks/strength';
 import { DAY_TYPE_LABELS, DAY_TYPE_ROWS, dayTitle } from '@/domain/strength/dayTypes';
-import { exercisesFromRoutine, newSession } from '@/domain/strength/session';
 import { fromKey } from '@/domain/dates';
-import { discardSession, startSession } from './actions';
+import { discardSession, startWorkout } from './actions';
 
 const timeOf = (ms: number) => {
   const d = new Date(ms);
@@ -28,8 +27,6 @@ export default function StartWorkoutSheet({ date }: { date: DateKey }) {
   const today = useToday();
   const { data: inProgress } = useInProgressSession();
   const { data: routines = [] } = useRoutines();
-  const { data: sessions = [] } = useAllSessions();
-  const { data: body } = useLatestWeight();
   const [days, setDays] = useState<DayType[]>([]);
   const [custom, setCustom] = useState<string | null>(null);
   const [mode, setMode] = useState<'live' | 'quick'>(date === today ? 'live' : 'quick');
@@ -40,21 +37,17 @@ export default function StartWorkoutSheet({ date }: { date: DateKey }) {
   const toggle = (d: DayType) => setDays((x) => (x.includes(d) ? x.filter((y) => y !== d) : [...x, d]));
 
   const begin = async (routine?: Routine) => {
-    const dayTypes = routine ? routine.dayTypes : custom != null ? [...days.filter((d) => d !== 'custom'), 'custom' as DayType] : days;
     const live = mode === 'live';
-    const s = newSession({
+    const id = await startWorkout({
       date: live ? today : logDate,
-      dayTypes,
-      customDayName: routine ? (routine.dayTypes.length ? undefined : routine.name) : custom ?? undefined,
+      dayTypes: custom != null ? [...days.filter((d) => d !== 'custom'), 'custom' as DayType] : days,
+      customDayName: custom ?? undefined,
       mode,
       startedAt: live ? Date.now() : atTime(logDate, start),
       durationMin: live ? 0 : duration,
-      routineId: routine?.id,
-      bodyWeightKg: body?.weightKg,
+      routine,
     });
-    if (routine) s.exercises = exercisesFromRoutine(routine, sessions, !live);
-    await startSession(s);
-    go(`/workout/${s.id}${routine ? '' : '?pick=1'}`);
+    go(`/workout/${id}${routine ? '' : '?pick=1'}`);
   };
 
   if (inProgress) {
@@ -104,7 +97,12 @@ export default function StartWorkoutSheet({ date }: { date: DateKey }) {
 
       {routines.length > 0 && (
         <div className="mt-6">
-          <p className="mb-2 text-sm font-semibold">Or start from a routine</p>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-semibold">Or start from a routine</p>
+            <button type="button" onClick={() => go('/routines')} className="min-h-11 px-1 text-sm font-semibold text-accent-ink">
+              Manage
+            </button>
+          </div>
           <ul className="space-y-2">
             {routines.map((r) => (
               <li key={r.id}>
@@ -120,6 +118,12 @@ export default function StartWorkoutSheet({ date }: { date: DateKey }) {
             ))}
           </ul>
         </div>
+      )}
+
+      {routines.length === 0 && (
+        <button type="button" onClick={() => go('/routines')} className="mt-5 min-h-11 text-sm font-semibold text-accent-ink">
+          Routines, starter programs & weekly split →
+        </button>
       )}
 
       <div className="mt-6">
