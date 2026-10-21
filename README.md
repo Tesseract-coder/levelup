@@ -1,8 +1,9 @@
 # LevelUp
 
-A mobile-first, local-first PWA that tracks **workouts, habits, sleep and food** in one place, and answers one question every day: *did I do what I said I'd do, and is it moving me toward my goal?*
+A mobile-first, local-first PWA that tracks **workouts, strength training, habits, sleep and food** in one place, and answers one question every day: *did I do what I said I'd do, and is it moving me toward my goal?*
 
 - **Frictionless logging** — type (or say) a whole day of food in one line; one tap to check off a habit; describe your day in a sentence.
+- **Strength training logger** — pick the day (Chest, Legs, Push/Pull/Legs…), log every set with last session's numbers one tap away, rest timer, PRs, per-exercise progress charts, routines and a weekly split.
 - **Honest, calm feedback** — daily and weekly summaries with a transparent consistency score, wins, misses and small next steps. Grace days instead of streak anxiety.
 - **Completely private** — no server, no accounts, no AI, no trackers. Everything is calculated and stored on your device (IndexedDB) and works offline. Export/import any time.
 
@@ -19,7 +20,7 @@ npm run dev        # http://localhost:5173
 
 To open it on your phone during development, `npm run dev` listens on your LAN, so visit `http://<your-computer-ip>:5173`. Install and offline mode need HTTPS (or `localhost`), so for full PWA testing on a phone, deploy the build (see below).
 
-**Demo data:** open `http://localhost:5173/?demo=1` (or Profile → Your data → *Load demo data*) to replace everything with ~60 days of realistic data, which lets you preview Insights and summaries instantly.
+**Demo data:** open `http://localhost:5173/?demo=1` (or Profile → Your data → *Load demo data*) to replace everything with ~60 days of realistic data plus 12 weeks of push/pull/legs strength sessions, which lets you preview Insights (including the Strength tab), exercise charts, PRs and summaries instantly.
 
 ## Scripts
 
@@ -28,8 +29,8 @@ To open it on your phone during development, `npm run dev` listens on your LAN, 
 | `npm run dev` | Vite dev server |
 | `npm run build` | Type-check and build the PWA into `dist/` |
 | `npm run preview` | Serve the production build locally |
-| `npm test` | Unit tests (Vitest): targets, streaks, score, stats engine, summaries, food & activity parsers |
-| `npm run e2e` | Playwright at 390×844: onboarding, food logging, habit check-off, summaries, charts at 360/390/430 px, axe accessibility scans (light + dark) |
+| `npm test` | Unit tests (Vitest): targets, streaks, score, stats engine, summaries, food & activity parsers, strength metrics/PRs/calories/overload rules, workout parser, migrations |
+| `npm run e2e` | Playwright at 390×844: onboarding, food logging, habit check-off, summaries, charts at 360/390/430 px, strength logging (live, quick log, typed, routines/split, resume after reload, kg↔lb), axe accessibility scans (light + dark) |
 | `npm run check` | Everything above in order |
 | `npm run icons` | Regenerate PWA icons (needs Python + Pillow) |
 
@@ -59,16 +60,35 @@ Reminders are local notifications. Without a push server, browsers can't schedul
 
 To improve recognition, add foods to `FOODS` in `src/domain/foodDb.ts`: give each one a name, aliases, per-100 g macros and household units.
 
+## Strength training
+
+Start from **Today → Start strength workout** (or Log → Log workout → Strength training).
+
+1. **Pick the day** — Chest, Back, Shoulders, Legs, Arms, Core, Glutes, Push/Pull/Legs, Upper/Lower/Full body, or a custom name. Choose *Log as I train* (timer, rest timer, screen kept awake) or *Log a past workout* (date, start time, duration — or let it be estimated from your sets).
+2. **Pick exercises** — suggestions for that day (what you did last time first), recent, favorites, search across a 155-exercise library (`src/data/exercises.json`) or create your own.
+3. **Log sets** — the *Previous* column shows last session's set (tap to copy); blank fields show it as a ghost value that ✓ accepts. Big ± steppers, set types (warm-up, working, drop, to failure), RPE/RIR, notes, supersets, swipe to delete.
+   - Dumbbells are **per hand** (volume counts both hands), barbells are **total incl. bar** (plate calculator included), machines are **stack weight** (add a gym note), bodyweight takes **+added / −assistance**, timed exercises take seconds. Everything is stored in kg and shown in your unit.
+4. **Finish** — duration, sets, reps, volume, calories as a range, new PRs, muscles worked, change vs your last same-day workout; save it as a routine.
+
+In-progress workouts save to the device on every change, so closing the app or reloading never loses a set. You can also **type or dictate** a whole workout ("Chest day. Bench 3x10 at 60kg, incline DB press 3 sets 12, 10, 8 with 15, 17.5, 20 kg…"); it's read on the device and shown for review — unclear exercise names and impossible numbers must be resolved before saving.
+
+Progress lives in **Insights → Strength** (weekly sets per muscle with a 10–20 set guideline band, body map, push/pull and upper/lower balance, volume trend, top improving lifts) and on each **exercise page** (max weight, estimated 1RM, volume and reps over time, PRs, full history, and a rule-based "how to progress" hint). **Routines** come with four editable starter programs; an active **weekly split** shows today's planned workout on Today and counts toward the consistency score and summaries.
+
+Calorie burn is an estimate (MET × body weight × active time, shown as MET ± 1). See [ARCHITECTURE.md](ARCHITECTURE.md#strength-training) for the formulas; tunable numbers live in `src/config/strength.ts`.
+
 ## Project structure
 
 ```
 src/
   db/          data model, Dexie schema + migrations, Repository interface (swap for cloud sync later)
+  config/      tunable constants (strength MET values, load factors, limits)
+  data/        bundled exercise library (exercises.json)
   domain/      pure logic: targets, habits & streaks, stats & score, rule summaries, suggestions, food DB, parsers
-  features/    screens & sheets (onboarding, today, log, food, habits, workouts, insights, summary, goals, profile)
+    strength/  exercise library & matching, metrics, PRs, calories, overload rules, progress analytics, workout parser, templates
+  features/    screens & sheets (onboarding, today, log, food, habits, workouts, strength, insights, summary, goals, profile)
   components/  UI primitives (sheet, buttons, steppers, rings, nav, snackbar)
   lib/         export/import, query client, PWA, haptics
-  dev/seed.ts  demo data generator
+  dev/         demo data generators (seed.ts, strengthSeed.ts)
 tests/unit/    Vitest
 e2e/           Playwright
 ```

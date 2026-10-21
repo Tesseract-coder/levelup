@@ -124,7 +124,7 @@ export default function ExerciseDetailScreen() {
                                 {formatDay(s.date, today)}
                                 {e.pain && <TriangleAlert size={14} className="text-caution" aria-label="Pain flagged" />}
                                 {sets.some((x) => x.isPR) && (
-                                  <span className="flex items-center gap-0.5 rounded-full bg-good-soft px-2 text-xs text-good">
+                                  <span className="flex items-center gap-0.5 rounded-full bg-good-soft px-2 text-xs font-semibold text-ink">
                                     <Trophy size={12} aria-hidden /> PR
                                   </span>
                                 )}

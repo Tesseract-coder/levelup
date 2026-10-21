@@ -71,3 +71,42 @@ test('onboarding, food review and sheets have no serious accessibility violation
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible();
   await check('food review');
 });
+
+for (const scheme of ['light', 'dark'] as const) {
+  test(`strength screens have no serious accessibility violations (${scheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
+    await page.goto('/?demo=1');
+    await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible({ timeout: 20_000 });
+    const check = async (where: string) => {
+      await page.waitForTimeout(300);
+      const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+      expect(r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${where}: ${v.id} — ${v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
+    };
+    for (const [path, heading] of [
+      ['/insights?tab=strength', 'Workouts per week'],
+      ['/exercises/barbell_bench_press', 'Barbell Bench Press'],
+      ['/routines', 'Routines'],
+      ['/split', 'Weekly split'],
+      ['/workout/text', 'Type a workout'],
+    ] as const) {
+      await page.goto(path);
+      await expect(page.getByRole('heading', { name: heading, exact: true }).first()).toBeVisible({ timeout: 15_000 });
+      await check(path);
+    }
+    // live logger, picker and set details
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Start strength workout' }).click();
+    await check('day picker');
+    await page.getByRole('group', { name: 'Muscle groups' }).getByRole('button', { name: 'Back' }).click();
+    await page.getByRole('button', { name: /^Start Back day/ }).click();
+    await expect(page.getByRole('heading', { name: 'Add exercises' })).toBeVisible();
+    await check('exercise picker');
+    await page.getByRole('button', { name: 'Lat Pulldown', exact: false }).first().click();
+    await page.getByRole('button', { name: 'Add 1 exercise' }).click();
+    const lp = page.getByRole('region', { name: 'Lat Pulldown' });
+    await lp.getByRole('button', { name: 'Mark Lat Pulldown set 1 done' }).click();
+    await check('workout');
+    await lp.getByRole('button', { name: /Lat Pulldown set 2: working set/ }).click();
+    await check('set details');
+  });
+}

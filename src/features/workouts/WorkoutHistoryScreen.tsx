@@ -64,7 +64,7 @@ export default function WorkoutHistoryScreen() {
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-2 font-semibold">
                             <span className="truncate">{title ?? def.name}</span>
-                            {pr && <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-good-soft px-2 text-xs text-good"><Trophy size={12} /> PR</span>}
+                            {pr && <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-good-soft px-2 text-xs font-semibold text-ink"><Trophy size={12} /> PR</span>}
                           </span>
                           <span className="tabular block truncate text-sm text-muted">
                             {formatDay(log.date, today)} · {log.durationMin} min{log.distanceKm ? ` · ${log.distanceKm} km` : ''}{exercises ? ` · ${exercises} exercises` : ''}

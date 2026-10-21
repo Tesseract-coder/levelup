@@ -181,7 +181,7 @@ export default function StrengthInsights() {
                   <span className="tabular text-sm text-muted">
                     {fmtWeight(x.from, unit, false)} → {fmtWeight(x.to, unit)}
                   </span>
-                  <span className="tabular rounded-full bg-good-soft px-2 text-sm font-bold text-good">+{x.pct}%</span>
+                  <span className="tabular rounded-full bg-good-soft px-2 text-sm font-bold text-ink">+{x.pct}%</span>
                 </Link>
               </li>
             ))}
