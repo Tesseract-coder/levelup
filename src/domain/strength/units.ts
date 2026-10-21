@@ -34,6 +34,8 @@ export function fmtSec(sec: number | undefined): string {
 }
 
 /** Big volumes read better rounded: 12,345 kg / 27,216 lb. */
-export function fmtVolume(kg: number, unit: WeightUnit): string {
-  return `${Math.round(unit === 'lb' ? kg / KG_PER_LB : kg).toLocaleString()} ${unit}`;
+export function fmtVolume(kg: number, unit: WeightUnit, compact = false): string {
+  const v = Math.round(unit === 'lb' ? kg / KG_PER_LB : kg);
+  if (compact && v >= 10_000) return `${Math.round(v / 1000).toLocaleString()}k ${unit}`;
+  return `${v.toLocaleString()} ${unit}`;
 }

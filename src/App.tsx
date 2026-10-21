@@ -24,6 +24,7 @@ const ProfileScreen = lazy(() => import('@/features/profile/ProfileScreen'));
 const GoalsScreen = lazy(() => import('@/features/goals/GoalsScreen'));
 const SummaryScreen = lazy(() => import('@/features/summary/SummaryScreen'));
 const ReviewScreen = lazy(() => import('@/features/summary/ReviewScreen'));
+const ExerciseDetailScreen = lazy(() => import('@/features/strength/ExerciseDetailScreen'));
 const WorkoutScreen = lazy(() => import('@/features/strength/WorkoutScreen'));
 const WorkoutSummaryScreen = lazy(() => import('@/features/strength/WorkoutSummaryScreen'));
 const RestTimerPill = lazy(() => import('@/features/strength/RestTimerPill').then((m) => ({ default: m.RestTimerPill })));
@@ -126,6 +127,7 @@ export function App() {
           <Route index element={<TodayScreen />} />
           <Route path="/log" element={<DiaryScreen />} />
           <Route path="/workouts" element={<WorkoutHistoryScreen />} />
+          <Route path="/exercises/:id" element={<ExerciseDetailScreen />} />
           <Route path="/insights" element={<InsightsScreen />} />
           <Route path="/habits" element={<HabitsScreen />} />
           <Route path="/habits/:id" element={<HabitDetailScreen />} />

@@ -138,3 +138,35 @@ describe('finishing', () => {
     expect(kept.every((x) => x.completed)).toBe(true);
   });
 });
+
+describe('progress analytics', () => {
+  it('weekly sets per muscle count primary 1, secondary ½; neglect and improvers', async () => {
+    const { setsByMuscle, neglected, topImprovers, balance } = await import('@/domain/strength/progress');
+    const a = session('a', '2026-10-01', [['barbell_bench_press', [set({ weightKg: 60, reps: 8 }), set({ weightKg: 60, reps: 8 }), set({ type: 'warmup', weightKg: 20, reps: 10 })]]]);
+    const sets = setsByMuscle([a], ex);
+    expect(sets.chest).toBe(2);
+    expect(sets.triceps).toBe(1);
+    expect(sets.shoulders).toBe(1);
+    expect(balance([a], ex)).toMatchObject({ push: 2, pull: 0, upper: 2, lower: 0 });
+    const legs = session('l', '2026-10-02', [['back_squat', [set({ weightKg: 100, reps: 5 })]]]);
+    expect(neglected([a, legs], ex, '2026-10-12')).toEqual([{ label: 'leg', daysSince: 10 }, { label: 'chest', daysSince: 11 }].sort((x, y) => y.daysSince - x.daysSince));
+    const prog = [60, 62.5, 65, 67.5].map((w, i) => session(`p${i}`, `2026-10-0${i + 1}`, [['barbell_bench_press', [set({ weightKg: w, reps: 5 })]]]));
+    expect(topImprovers(prog, ex, '2026-10-10')[0]).toMatchObject({ exerciseId: 'barbell_bench_press', pct: 8 });
+  });
+});
+
+describe('progressive overload', () => {
+  it('suggests weight, reps, hold or deload from the numbers', async () => {
+    const { suggestOverload, nextDumbbellKg } = await import('@/domain/strength/overload');
+    const hist = (vals: number[]) => vals.map((v, i) => ({ date: `2026-10-0${i + 1}`, sessionId: `${i}`, maxWeightKg: 0, e1rm: v, volumeKg: 0, bestReps: 0, totalReps: 0, sets: 3, maxDurationSec: 0 }));
+    const top = [set({ weightKg: 60, reps: 12, rpe: 8 }), set({ weightKg: 60, reps: 12, rpe: 7 })];
+    expect(suggestOverload({ ex: ex('barbell_bench_press'), lastSets: top, history: hist([70, 72]), repRange: [8, 12] })).toMatchObject({ kind: 'increase', weightKg: 62.5, reps: 8 });
+    expect(suggestOverload({ ex: ex('dumbbell_bench_press'), lastSets: [set({ weightKg: 20, reps: 12 })], history: [], repRange: [8, 12] })).toMatchObject({ kind: 'increase', weightKg: 22 });
+    expect(nextDumbbellKg(17.5)).toBe(18);
+    expect(suggestOverload({ ex: ex('barbell_bench_press'), lastSets: [set({ weightKg: 60, reps: 12, rpe: 10 })], history: [], repRange: [8, 12] })?.kind).toBe('more_reps');
+    expect(suggestOverload({ ex: ex('barbell_bench_press'), lastSets: [set({ weightKg: 60, reps: 6 })], history: [], repRange: [8, 12] })).toMatchObject({ kind: 'hold', weightKg: 60, reps: 8 });
+    expect(suggestOverload({ ex: ex('barbell_bench_press'), lastSets: [set({ weightKg: 60, reps: 9 })], history: [], repRange: [8, 12] })).toMatchObject({ kind: 'more_reps', reps: 10 });
+    expect(suggestOverload({ ex: ex('barbell_bench_press'), lastSets: top, history: hist([80, 76, 72]), repRange: [8, 12] })?.kind).toBe('deload');
+    expect(suggestOverload({ ex: ex('plank'), lastSets: [set({ durationSec: 60 })], history: [], repRange: [8, 12] })).toMatchObject({ kind: 'increase', durationSec: 70 });
+  });
+});

@@ -20,6 +20,7 @@ import { restFor } from './format';
 import { useRestTimer } from './restTimer';
 import { atTime } from './StartWorkoutSheet';
 import { useSessionEditor } from './useSessionEditor';
+import { OverloadHint } from './OverloadHint';
 
 function Elapsed({ since, pausedMs = 0 }: { since: number; pausedMs?: number }) {
   const [, tick] = useReducer((x: number) => x + 1, 0);
@@ -160,7 +161,7 @@ export default function WorkoutScreen() {
     prCount.current = prSets.size;
   }, [prSets]);
 
-  const onOpenDetail = useCallback((_exerciseId: string) => {}, []);
+  const onOpenDetail = useCallback((exerciseId: string) => navigate(`/exercises/${exerciseId}`), [navigate]);
 
   if (s === undefined || !ready) {
     return (
@@ -296,6 +297,7 @@ export default function WorkoutScreen() {
               unit={unit}
               settings={settings}
               superset={pos}
+              hint={inProgress && !entry.sets.some((x) => x.completed) ? <OverloadHint exerciseId={entry.exerciseId} excludeSessionId={s.id} compact /> : undefined}
               onChange={changeEntry}
               onSetDone={onSetDone}
               onMenu={onMenu}

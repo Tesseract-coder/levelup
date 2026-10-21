@@ -1,5 +1,5 @@
 /**
- * Demo data: ~60 days of realistic, deterministic logs so Insights and summaries can be previewed.
+ * Demo data: ~60 days of realistic, deterministic logs plus 12 weeks of strength sessions so Insights and summaries can be previewed.
  * Used by Settings → "Load demo data", the `?demo=1` URL flag and the e2e tests.
  */
 import type { Repository } from '@/db/repository';
@@ -9,6 +9,7 @@ import { FOODS, gramsFor, macrosFor } from '@/domain/foodDb';
 import { HABIT_PRESETS, WORKOUT_PRESETS, caloriesBurned, presetToDef } from '@/domain/presets';
 import { computeTargets } from '@/domain/targets';
 import { newId } from '@/lib/id';
+import { seedStrength } from './strengthSeed';
 
 function rng(seed: number) {
   let s = seed >>> 0;
@@ -99,22 +100,13 @@ export async function seedDemoData(repo: Repository, days = 60) {
         }
       }
     }
-    // workouts: run Mon/Wed/Fri-ish, strength Tue/Thu/Sat-ish, with misses
+    // workouts: runs Tue/Thu/Sat-ish (strength sessions are seeded separately, Mon/Wed/Fri)
     const w = (key: string, min: number, intensity: 'easy' | 'moderate' | 'hard', extra: Partial<ActivityLog> = {}) => {
       const d = by(key);
       logs.push({ id: newId(), activityId: d.id, date, value: min, durationMin: min, intensity, caloriesBurnedEst: caloriesBurned(d.met, weight, min, intensity), createdAt: ts, ...extra });
     };
     if (!isToday) {
-      if ([1, 3, 5].includes(dow) && r() < 0.55 + 0.3 * progress) w('running', 25 + Math.round(r() * 15), r() < 0.3 ? 'hard' : 'moderate', { distanceKm: Math.round((3.5 + r() * 2.5) * 10) / 10 });
-      if ([2, 4, 6].includes(dow) && r() < 0.6 + 0.25 * progress) {
-        const week = Math.floor((days - i) / 7);
-        w('strength', 40 + Math.round(r() * 15), 'moderate', {
-          exercises: [
-            { name: 'Squat', sets: [0, 1, 2].map(() => ({ reps: 8, weightKg: 50 + week * 2.5 })) },
-            { name: 'Bench press', sets: [0, 1, 2].map(() => ({ reps: 8, weightKg: 40 + week * 1.25 })) },
-          ],
-        });
-      }
+      if ([2, 4, 6].includes(dow) && r() < 0.55 + 0.3 * progress) w('running', 25 + Math.round(r() * 15), r() < 0.3 ? 'hard' : 'moderate', { distanceKm: Math.round((3.5 + r() * 2.5) * 10) / 10 });
       if (dow === 0 && r() < 0.6) w('incline_walk', 30, 'easy');
       if (r() < 0.2) w('yoga', 20, 'easy');
     }
@@ -143,6 +135,6 @@ export async function seedDemoData(repo: Repository, days = 60) {
   await repo.saveFood(food);
   await repo.saveLogs(logs);
   await repo.saveSaved({ id: newId(), type: 'meal', name: 'Usual breakfast', items: MENUS.breakfast[0].map(([id, q]) => { const f = FOODS.find((x) => x.id === id)!; const g = Math.round(gramsFor(f, f.defaultUnit, q)); return { name: f.name, quantity: q, unit: f.defaultUnit, gramsEst: g, ...macrosFor(f, g) }; }), defaultMeal: 'breakfast', useCount: 12, lastUsedAt: now, createdAt: now });
-  await repo.migrateLegacyStrength();
+  await seedStrength(repo, r, today, by('strength').id, profile.weightKg - 3);
   await repo.updateSettings({ onboarded: true, disclaimerAccepted: true, demoData: true });
 }

@@ -91,3 +91,42 @@ test('quick-log a past workout', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Legs day done/ })).toBeVisible();
   await expect(page.getByText('60', { exact: true })).toBeVisible(); // duration in minutes
 });
+
+test.describe('progress with 12 weeks of data', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/?demo=1');
+    await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible({ timeout: 20_000 });
+  });
+
+  test('strength dashboard and exercise detail render at 360px', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 780 });
+    await page.getByRole('link', { name: 'Insights' }).click();
+    await page.getByRole('radio', { name: 'Strength' }).click();
+    for (const t of ['Workouts per week', 'Hard sets per muscle', "This week's muscles", 'Balance', /Volume per week/, /Top improving lifts/]) {
+      await expect(page.getByRole('heading', { name: t }).first()).toBeVisible();
+    }
+    await shot(page, '06-strength-insights');
+    await noHorizontalScroll(page);
+    await page.getByRole('link', { name: /Barbell Bench Press/ }).first().click();
+    await expect(page.getByRole('heading', { name: 'Barbell Bench Press' })).toBeVisible();
+    await expect(page.getByText('Best est. 1RM')).toBeVisible();
+    await expect(page.locator('.recharts-surface')).toHaveCount(1);
+    await page.getByRole('radio', { name: 'e1RM' }).click();
+    await page.getByRole('radio', { name: 'All' }).click();
+    await shot(page, '07-exercise-detail');
+    await expect(page.getByRole('heading', { name: 'History' })).toBeVisible();
+    await noHorizontalScroll(page);
+  });
+
+  test('kg ↔ lb display switch keeps stored values', async ({ page }) => {
+    await page.goto('/exercises/barbell_bench_press');
+    const kg = await page.getByText(/^\d+(\.\d+)? kg$/).first().innerText();
+    await page.goto('/profile');
+    await page.getByRole('button', { name: 'Body & preferences' }).click();
+    await page.getByRole('radio', { name: 'lb · ft/in' }).click();
+    await page.getByRole('button', { name: 'Save profile' }).click();
+    await page.goto('/exercises/barbell_bench_press');
+    const lb = await page.getByText(/^\d+(\.\d+)? lb$/).first().innerText();
+    expect(Math.round(parseFloat(lb) * 0.45359237)).toBe(Math.round(parseFloat(kg)));
+  });
+});
