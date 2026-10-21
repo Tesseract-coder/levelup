@@ -1,4 +1,4 @@
-import { ChevronRight, ListChecks, Play, Plus } from 'lucide-react';
+import { ChevronRight, ListChecks, MessageSquareText, Play, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Sheet } from '@/components/Sheet';
 import { useNavigateFromSheets } from '@/components/sheetHistory';
@@ -94,6 +94,10 @@ export default function StartWorkoutSheet({ date }: { date: DateKey }) {
         ))}
         {custom != null && <Input label="Name this day" placeholder="e.g. Chest + Triceps, Arms & Abs" value={custom} maxLength={40} onChange={(e) => setCustom(e.target.value)} autoFocus />}
       </div>
+
+      <button type="button" onClick={() => go('/workout/text')} className="mt-5 flex min-h-12 w-full items-center gap-2 rounded-2xl border border-dashed border-line px-4 text-left font-medium">
+        <MessageSquareText size={18} className="text-accent-ink" aria-hidden /> Type or speak the whole workout
+      </button>
 
       {routines.length > 0 && (
         <div className="mt-6">

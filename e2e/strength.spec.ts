@@ -161,3 +161,24 @@ test('save a routine, plan it in the weekly split, start it from Today', async (
   await expect(page.getByRole('region', { name: 'Plank' })).toBeVisible();
   await noHorizontalScroll(page);
 });
+
+test('type a workout → review (did you mean, check this) → save', async ({ page }) => {
+  await onboard(page);
+  await page.getByRole('button', { name: 'Start strength workout' }).click();
+  await page.getByRole('button', { name: 'Type or speak the whole workout' }).click();
+  await page.getByLabel('Describe what you did').fill('Chest day. Flat dumbbell press 3 sets 12, 10, 8 with 15, 17.5, 20 kg. Incline press 3x10 at 15kg. Push-ups 2 sets till failure 18 and 14. Cable fly 3x150 at 10kg');
+  await page.getByRole('button', { name: 'Read it' }).click();
+  await expect(page.getByRole('heading', { name: 'Review workout' })).toBeVisible();
+  await expect(page.getByText('Did you mean…')).toBeVisible();
+  await expect(page.getByText(/Check this: 150 reps looks too high — fix/)).toBeVisible();
+  const save = page.getByRole('button', { name: /^Save Chest day/ });
+  await expect(save).toBeDisabled();
+  await shot(page, '08-text-review');
+  await page.getByRole('button', { name: 'Incline Dumbbell Press' }).click();
+  for (const i of [1, 2, 3]) await page.getByLabel(`Cable Fly (Mid) set ${i} Reps`).fill('12');
+  await expect(save).toBeEnabled();
+  await save.click();
+  await expect(page.getByRole('heading', { name: /Chest day done/ })).toBeVisible();
+  await expect(page.getByText('Incline Dumbbell Press')).toBeVisible();
+  await expect(page.getByText('15×12 · 17.5×10 · 20×8')).toBeVisible();
+});

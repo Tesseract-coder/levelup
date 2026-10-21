@@ -28,6 +28,7 @@ const ExerciseDetailScreen = lazy(() => import('@/features/strength/ExerciseDeta
 const RoutinesScreen = lazy(() => import('@/features/strength/RoutinesScreen'));
 const RoutineEditorScreen = lazy(() => import('@/features/strength/RoutineEditorScreen'));
 const SplitPlannerScreen = lazy(() => import('@/features/strength/SplitPlannerScreen'));
+const WorkoutTextScreen = lazy(() => import('@/features/strength/WorkoutTextScreen'));
 const WorkoutScreen = lazy(() => import('@/features/strength/WorkoutScreen'));
 const WorkoutSummaryScreen = lazy(() => import('@/features/strength/WorkoutSummaryScreen'));
 const RestTimerPill = lazy(() => import('@/features/strength/RestTimerPill').then((m) => ({ default: m.RestTimerPill })));
@@ -123,6 +124,7 @@ export function App() {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/food/new" element={<FoodEntryScreen />} />
           <Route path="/review" element={<ReviewScreen />} />
+          <Route path="/workout/text" element={<WorkoutTextScreen />} />
           <Route path="/workout/:id" element={<WorkoutScreen />} />
           <Route path="/workout/:id/summary" element={<WorkoutSummaryScreen />} />
         </Route>

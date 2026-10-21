@@ -14,7 +14,7 @@ export type SheetSpec =
   | { type: 'activityText'; date: DateKey }
   // strength
   | { type: 'strengthStart'; date: DateKey }
-  | { type: 'exercisePicker'; dayTypes: DayType[]; customDayName?: string; mode: 'add' | 'swap'; excludeIds?: string[]; onPick: (ids: string[]) => void }
+  | { type: 'exercisePicker'; dayTypes: DayType[]; customDayName?: string; mode: 'add' | 'swap'; excludeIds?: string[]; initialQuery?: string; onPick: (ids: string[]) => void }
   | { type: 'setDetails'; set: ExerciseSet; label: string; onChange: (patch: Partial<ExerciseSet>) => void; onDelete: () => void }
   | {
       type: 'exerciseMenu';

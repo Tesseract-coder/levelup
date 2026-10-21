@@ -25,7 +25,7 @@ export default function ExercisePickerSheet({ spec }: { spec: Extract<SheetSpec,
   const { data: sessions = [] } = useAllSessions();
   const hasDay = spec.dayTypes.some((d) => d !== 'custom') || !!spec.customDayName;
   const [tab, setTab] = useState<Tab>(hasDay ? 'suggested' : 'recent');
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(spec.initialQuery ?? '');
   const [group, setGroup] = useState<MuscleGroup | null>(null);
   const [equipment, setEquipment] = useState<Equipment | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
