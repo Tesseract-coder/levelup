@@ -143,5 +143,6 @@ export async function seedDemoData(repo: Repository, days = 60) {
   await repo.saveFood(food);
   await repo.saveLogs(logs);
   await repo.saveSaved({ id: newId(), type: 'meal', name: 'Usual breakfast', items: MENUS.breakfast[0].map(([id, q]) => { const f = FOODS.find((x) => x.id === id)!; const g = Math.round(gramsFor(f, f.defaultUnit, q)); return { name: f.name, quantity: q, unit: f.defaultUnit, gramsEst: g, ...macrosFor(f, g) }; }), defaultMeal: 'breakfast', useCount: 12, lastUsedAt: now, createdAt: now });
+  await repo.migrateLegacyStrength();
   await repo.updateSettings({ onboarded: true, disclaimerAccepted: true, demoData: true });
 }

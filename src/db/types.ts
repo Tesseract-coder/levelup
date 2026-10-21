@@ -103,7 +103,10 @@ export interface ActivityLog {
   distanceKm?: number;
   intensity?: Intensity;
   caloriesBurnedEst?: number;
+  /** Legacy (pre-v3) free-text strength detail. New strength logs point to a StrengthSession instead. */
   exercises?: StrengthExercise[];
+  /** Strength workouts: the StrengthSession this log summarises. */
+  sessionId?: ID;
   notes?: string;
   createdAt: number;
 }
@@ -248,5 +251,184 @@ export interface Settings {
   haptics: boolean;
   fasting?: { startedAt: number; targetHours: number } | null;
   demoData?: boolean;
+  strength?: Partial<StrengthSettings>;
+}
+
+// ---------------------------------------------------------------- strength
+
+export type Muscle =
+  | 'chest'
+  | 'front_delts'
+  | 'side_delts'
+  | 'rear_delts'
+  | 'lats'
+  | 'upper_back'
+  | 'traps'
+  | 'lower_back'
+  | 'biceps'
+  | 'triceps'
+  | 'forearms'
+  | 'abs'
+  | 'obliques'
+  | 'quads'
+  | 'hamstrings'
+  | 'glutes'
+  | 'calves'
+  | 'adductors';
+export type Equipment = 'barbell' | 'dumbbell' | 'machine' | 'cable' | 'bodyweight' | 'kettlebell' | 'band' | 'smith' | 'other';
+export type Mechanic = 'compound' | 'isolation';
+export type ForceType = 'push' | 'pull' | 'legs' | 'core';
+export type ExerciseTracking = 'weight_reps' | 'bodyweight_reps' | 'duration' | 'weight_duration' | 'distance';
+export type StrengthIntensity = 'light' | 'moderate' | 'vigorous';
+
+export interface Exercise {
+  id: ID;
+  name: string;
+  aliases: string[];
+  primaryMuscles: Muscle[];
+  secondaryMuscles: Muscle[];
+  equipment: Equipment;
+  mechanic: Mechanic;
+  forceType: ForceType;
+  /** Weight is entered per dumbbell; volume counts both hands. */
+  bilateralDumbbell: boolean;
+  trackingType: ExerciseTracking;
+  defaultRestSec: number;
+  /** Typical effort when this exercise dominates a session (feeds intensity derivation). */
+  metCategory: StrengthIntensity;
+  isCustom: boolean;
+  archived?: boolean;
+  createdAt?: number;
+}
+
+/** Per-exercise user preferences (built-in and custom). */
+export interface ExercisePref {
+  exerciseId: ID;
+  favorite?: boolean;
+  restSec?: number;
+  /** Override the library's bilateral-dumbbell volume rule. */
+  countBothHands?: boolean;
+  /** e.g. "Gym A – Hammer Strength machine"; machine numbers aren't comparable across gyms. */
+  gymNote?: string;
+  /** Target rep range used by progressive-overload hints. */
+  repMin?: number;
+  repMax?: number;
+}
+
+export type DayType = 'chest' | 'back' | 'shoulders' | 'legs' | 'arms' | 'core' | 'glutes' | 'push' | 'pull' | 'upper' | 'lower' | 'full' | 'custom';
+export type SetType = 'warmup' | 'working' | 'drop' | 'failure';
+export type PRType = 'weight' | 'e1rm' | 'reps' | 'volume';
+
+export interface ExerciseSet {
+  id: ID;
+  type: SetType;
+  /** Always kg. Dumbbells: per hand. Barbell: total. Machine: stack value. */
+  weightKg?: number;
+  reps?: number;
+  durationSec?: number;
+  distanceM?: number;
+  /** Bodyweight exercises: extra load (+) … */
+  addedWeightKg?: number;
+  /** … or machine/band assistance. */
+  assistanceKg?: number;
+  rpe?: number;
+  rir?: number;
+  tempo?: string;
+  notes?: string;
+  completed: boolean;
+  completedAt?: number;
+  isPR?: boolean;
+  prTypes?: PRType[];
+}
+
+export interface SessionExercise {
+  id: ID;
+  exerciseId: ID;
+  /** Exercises sharing a group id are performed as a superset. */
+  supersetGroup?: string;
+  notes?: string;
+  pain?: boolean;
+  restSec?: number;
+  /** Allocated share of the session's calorie estimate. */
+  kcalShare?: number;
+  sets: ExerciseSet[];
+}
+
+export interface StrengthSession {
+  id: ID;
+  date: DateKey;
+  status: 'in_progress' | 'done';
+  mode: 'live' | 'quick';
+  startedAt: number;
+  endedAt?: number;
+  /** Live mode: total time spent in pauses longer than 10 min (excluded from active time). */
+  pausedMs?: number;
+  durationMin: number;
+  dayTypes: DayType[];
+  customDayName?: string;
+  routineId?: ID;
+  intensity: StrengthIntensity;
+  intensityOverridden: boolean;
+  kcalEstimate: number;
+  kcalLow: number;
+  kcalHigh: number;
+  kcalMethod: 'met' | 'heart_rate';
+  totalVolumeKg: number;
+  /** Body weight used for bodyweight-exercise volume and calories. */
+  bodyWeightKg?: number;
+  notes?: string;
+  energyRating?: number;
+  source: 'manual' | 'text' | 'import' | 'migrated';
+  /** In order. Sets are embedded so a session saves (and undoes) atomically. */
+  exercises: SessionExercise[];
+  /** Denormalised for the multi-entry index (per-exercise history). */
+  exerciseIds: ID[];
+  /** The ActivityLog that represents this session in Today, charts and the score. */
+  activityLogId?: ID;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface RoutineExercise {
+  exerciseId: ID;
+  targetSets: number;
+  repMin: number;
+  repMax: number;
+  restSec?: number;
+  supersetGroup?: string;
+}
+
+export interface Routine {
+  id: ID;
+  name: string;
+  dayTypes: DayType[];
+  exercises: RoutineExercise[];
+  archived: boolean;
+  order: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** Weekday (0 = Sunday … 6) → what's planned. Missing days are rest days. */
+export type SplitDay = { routineId?: ID; dayTypes: DayType[]; label?: string };
+
+export interface SplitPlan {
+  id: ID;
+  name: string;
+  days: Partial<Record<number, SplitDay>>;
+  active: boolean;
+  createdAt: number;
+}
+
+export interface StrengthSettings {
+  weightStepKg: number;
+  weightStepLb: number;
+  barWeightKg: number;
+  /** Default rest when an exercise has no own value; 0 = use the exercise default. */
+  defaultRestSec: number;
+  includeWarmupsInVolume: boolean;
+  restSound: boolean;
+  restVibrate: boolean;
+  restNotify: boolean;
 }
 

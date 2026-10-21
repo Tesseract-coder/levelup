@@ -3,13 +3,18 @@ import type {
   ActivityLog,
   BodyLog,
   DateKey,
+  Exercise,
+  ExercisePref,
   FoodEntry,
   Goal,
   ID,
   MoodLog,
   SavedFood,
+  Routine,
   Settings,
   SleepLog,
+  SplitPlan,
+  StrengthSession,
   Summary,
   UserProfile,
 } from './types';
@@ -48,6 +53,11 @@ export type RecordOf<T extends TableName> = {
   sleepLogs: SleepLog;
   moodLogs: MoodLog;
   summaries: Summary;
+  strengthSessions: StrengthSession;
+  customExercises: Exercise;
+  exercisePrefs: ExercisePref;
+  routines: Routine;
+  splitPlans: SplitPlan;
 }[T];
 
 /**
@@ -102,6 +112,31 @@ export interface Repository {
   restore<T extends TableName>(table: T, record: RecordOf<T>): Promise<void>;
 
   rangeData(start: DateKey, end: DateKey): Promise<RangeData>;
+
+  // strength
+  listCustomExercises(): Promise<Exercise[]>;
+  saveCustomExercise(ex: Exercise): Promise<void>;
+  listExercisePrefs(): Promise<ExercisePref[]>;
+  saveExercisePref(pref: ExercisePref): Promise<void>;
+  getSession(id: ID): Promise<StrengthSession | undefined>;
+  /** Saves the session; for finished sessions also writes the linked ActivityLog in the same transaction. */
+  saveSession(session: StrengthSession, log?: ActivityLog): Promise<void>;
+  /** Deletes a session and its ActivityLog together; returns both for undo. */
+  removeSession(id: ID): Promise<{ session: StrengthSession; log?: ActivityLog } | undefined>;
+  restoreSession(rec: { session: StrengthSession; log?: ActivityLog }): Promise<void>;
+  sessionsInRange(start: DateKey, end: DateKey): Promise<StrengthSession[]>;
+  /** Finished sessions containing an exercise, oldest first. */
+  sessionsWithExercise(exerciseId: ID): Promise<StrengthSession[]>;
+  /** All finished sessions, oldest first. */
+  allSessions(): Promise<StrengthSession[]>;
+  inProgressSession(): Promise<StrengthSession | undefined>;
+  listRoutines(opts?: { includeArchived?: boolean }): Promise<Routine[]>;
+  saveRoutine(routine: Routine): Promise<void>;
+  listSplitPlans(): Promise<SplitPlan[]>;
+  /** Saves a plan; when it's active, deactivates the others. */
+  saveSplitPlan(plan: SplitPlan): Promise<void>;
+  /** Converts legacy strength logs (free-text exercises, no session) into sessions. Idempotent. */
+  migrateLegacyStrength(): Promise<number>;
 
   // data portability
   exportAll(): Promise<ExportBundle>;

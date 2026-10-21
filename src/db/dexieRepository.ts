@@ -1,7 +1,8 @@
 import { LevelUpDB, SCHEMA_VERSION, TABLES, type TableName } from './dexie';
 import { EXPORT_FORMAT, EXPORT_VERSION, type ExportBundle, type RecordOf, type Repository } from './repository';
-import type { Goal, Settings } from './types';
+import type { ActivityLog, Goal, Settings, SplitPlan, StrengthSession } from './types';
 import { newId } from '@/lib/id';
+import { migrateLegacyStrength } from '@/domain/strength/migrate';
 
 export const DEFAULT_SETTINGS: Settings = {
   id: 'app',
@@ -16,6 +17,8 @@ export const DEFAULT_SETTINGS: Settings = {
   haptics: true,
   fasting: null,
 };
+
+const bySessionTime = (a: StrengthSession, b: StrengthSession) => (a.date === b.date ? a.startedAt - b.startedAt : a.date < b.date ? -1 : 1);
 
 export class DexieRepository implements Repository {
   constructor(readonly db: LevelUpDB) {}
@@ -167,6 +170,91 @@ export class DexieRepository implements Repository {
     return { activities, logs, food, sleep, body, mood };
   }
 
+  // ---------------------------------------------------------------- strength
+
+  async listCustomExercises() {
+    return this.db.customExercises.toArray();
+  }
+  async saveCustomExercise(ex: RecordOf<'customExercises'>) {
+    await this.db.customExercises.put(ex);
+  }
+  async listExercisePrefs() {
+    return this.db.exercisePrefs.toArray();
+  }
+  async saveExercisePref(pref: RecordOf<'exercisePrefs'>) {
+    await this.db.exercisePrefs.put(pref);
+  }
+  async getSession(id: string) {
+    return this.db.strengthSessions.get(id);
+  }
+  async saveSession(session: StrengthSession, log?: ActivityLog) {
+    const s = { ...session, exerciseIds: [...new Set(session.exercises.map((e) => e.exerciseId))], updatedAt: Date.now() };
+    await this.db.transaction('rw', this.db.strengthSessions, this.db.activityLogs, async () => {
+      await this.db.strengthSessions.put(s);
+      if (log) await this.db.activityLogs.put(log);
+    });
+  }
+  async removeSession(id: string) {
+    return this.db.transaction('rw', this.db.strengthSessions, this.db.activityLogs, async () => {
+      const session = await this.db.strengthSessions.get(id);
+      if (!session) return undefined;
+      const log = session.activityLogId ? await this.db.activityLogs.get(session.activityLogId) : undefined;
+      await this.db.strengthSessions.delete(id);
+      if (log) await this.db.activityLogs.delete(log.id);
+      return { session, log };
+    });
+  }
+  async restoreSession(rec: { session: StrengthSession; log?: ActivityLog }) {
+    await this.saveSession(rec.session, rec.log);
+  }
+  async sessionsInRange(start: string, end: string) {
+    const all = await this.db.strengthSessions.where('date').between(start, end, true, true).toArray();
+    return all.filter((s) => s.status === 'done').sort(bySessionTime);
+  }
+  async sessionsWithExercise(exerciseId: string) {
+    const all = await this.db.strengthSessions.where('exerciseIds').equals(exerciseId).toArray();
+    return all.filter((s) => s.status === 'done').sort(bySessionTime);
+  }
+  async allSessions() {
+    return (await this.db.strengthSessions.where('status').equals('done').toArray()).sort(bySessionTime);
+  }
+  async inProgressSession() {
+    const all = await this.db.strengthSessions.where('status').equals('in_progress').toArray();
+    return all.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  }
+  async listRoutines(opts?: { includeArchived?: boolean }) {
+    const all = await this.db.routines.orderBy('order').toArray();
+    return opts?.includeArchived ? all : all.filter((r) => !r.archived);
+  }
+  async saveRoutine(routine: RecordOf<'routines'>) {
+    await this.db.routines.put({ ...routine, updatedAt: Date.now() });
+  }
+  async listSplitPlans() {
+    return (await this.db.splitPlans.toArray()).sort((a, b) => b.createdAt - a.createdAt);
+  }
+  async saveSplitPlan(plan: SplitPlan) {
+    await this.db.transaction('rw', this.db.splitPlans, async () => {
+      if (plan.active) {
+        const others = await this.db.splitPlans.filter((p) => p.active && p.id !== plan.id).toArray();
+        for (const o of others) await this.db.splitPlans.put({ ...o, active: false });
+      }
+      await this.db.splitPlans.put(plan);
+    });
+  }
+  async migrateLegacyStrength() {
+    return this.db.transaction('rw', this.db.activities, this.db.activityLogs, this.db.strengthSessions, this.db.customExercises, async () => {
+      const ids = new Set((await this.db.activities.toArray()).filter((d) => d.isStrength).map((d) => d.id));
+      if (!ids.size) return 0;
+      const logs = await this.db.activityLogs.filter((l) => ids.has(l.activityId) && !l.sessionId).toArray();
+      if (!logs.length) return 0;
+      const { sessions, newCustom, patches } = migrateLegacyStrength(logs, ids, await this.db.customExercises.toArray());
+      await this.db.customExercises.bulkPut(newCustom);
+      await this.db.strengthSessions.bulkPut(sessions);
+      for (const p of patches) await this.db.activityLogs.update(p.id, { sessionId: p.sessionId });
+      return sessions.length;
+    });
+  }
+
   async exportAll(): Promise<ExportBundle> {
     const data: ExportBundle['data'] = {};
     for (const t of TABLES) data[t] = await this.db.table(t).toArray();
@@ -190,6 +278,8 @@ export class DexieRepository implements Repository {
         if (Array.isArray(rows) && rows.length) await this.db.table(t).bulkPut(rows);
       }
     });
+    // exports from before v3 carry free-text strength logs only
+    await this.migrateLegacyStrength();
   }
 
   async deleteAll() {
