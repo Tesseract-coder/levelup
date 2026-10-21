@@ -12,10 +12,10 @@ export interface FinalizeCtx {
   now: number;
 }
 
-/** Drop empty sets/exercises. Filled-in sets can be counted as done (quick log, or confirmed at finish). */
+/** Drop empty sets/exercises. Filled-in unticked sets are either counted as done or dropped. */
 export function cleanSession(s: StrengthSession, markFilledDone: boolean): StrengthSession {
   const exercises = s.exercises
-    .map((e) => ({ ...e, sets: e.sets.filter(hasValues).map((x) => (markFilledDone && !x.completed ? { ...x, completed: true, completedAt: x.completedAt } : x)) }))
+    .map((e) => ({ ...e, sets: e.sets.filter((x) => hasValues(x) && (markFilledDone || x.completed)).map((x) => (x.completed ? x : { ...x, completed: true })) }))
     .filter((e) => e.sets.length > 0);
   return { ...s, exercises, exerciseIds: [...new Set(exercises.map((e) => e.exerciseId))] };
 }

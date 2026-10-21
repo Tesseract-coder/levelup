@@ -134,3 +134,31 @@ export function moveItem<T>(arr: T[], from: number, to: number): T[] {
   next.splice(to, 0, x);
   return next;
 }
+
+/** "+5% volume vs last Chest day": null when there's no earlier same-day session with volume. */
+export function compareToLastSameDay(s: StrengthSession, sessions: StrengthSession[]): { pct: number; last: StrengthSession } | null {
+  const earlier = sessions.filter((x) => x.id !== s.id && sessionOrder(x, s) < 0);
+  const last = lastSameDay(s.dayTypes, s.customDayName, earlier, s.id);
+  if (!last || !last.totalVolumeKg || !s.totalVolumeKg) return null;
+  return { pct: Math.round(((s.totalVolumeKg - last.totalVolumeKg) / last.totalVolumeKg) * 100), last };
+}
+
+/** Save a session's structure as a reusable routine. */
+export function routineFromSession(s: StrengthSession, name: string, order: number): Routine {
+  const now = Date.now();
+  return {
+    id: newId(),
+    name: name.trim(),
+    dayTypes: s.dayTypes,
+    exercises: s.exercises.map((e) => {
+      const reps = e.sets.filter((x) => x.type !== 'warmup' && x.reps).map((x) => x.reps!);
+      const hi = reps.length ? Math.max(...reps) : 10;
+      const lo = reps.length ? Math.min(...reps) : 8;
+      return { exerciseId: e.exerciseId, targetSets: Math.max(1, e.sets.filter((x) => x.type !== 'warmup').length), repMin: lo === hi ? Math.max(1, hi - 2) : lo, repMax: hi, restSec: e.restSec, supersetGroup: e.supersetGroup };
+    }),
+    archived: false,
+    order,
+    createdAt: now,
+    updatedAt: now,
+  };
+}

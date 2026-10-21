@@ -89,5 +89,5 @@ test('quick-log a past workout', async ({ page }) => {
   await lp.getByLabel('Leg Press set 1 Reps').fill('10');
   await page.getByRole('button', { name: 'Finish' }).click();
   await expect(page.getByRole('heading', { name: /Legs day done/ })).toBeVisible();
-  await expect(page.getByText('60 min')).toBeVisible();
+  await expect(page.getByText('60', { exact: true })).toBeVisible(); // duration in minutes
 });

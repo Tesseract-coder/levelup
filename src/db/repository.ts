@@ -123,6 +123,8 @@ export interface Repository {
   /** Saves the session; for finished sessions also writes the linked ActivityLog in the same transaction. */
   saveSession(session: StrengthSession, log?: ActivityLog): Promise<void>;
   /** Deletes a session and its ActivityLog together; returns both for undo. */
+  /** Bulk update of finished sessions (e.g. recomputed PR flags). */
+  saveSessions(sessions: StrengthSession[]): Promise<void>;
   removeSession(id: ID): Promise<{ session: StrengthSession; log?: ActivityLog } | undefined>;
   restoreSession(rec: { session: StrengthSession; log?: ActivityLog }): Promise<void>;
   sessionsInRange(start: DateKey, end: DateKey): Promise<StrengthSession[]>;

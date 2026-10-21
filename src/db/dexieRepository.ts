@@ -197,6 +197,9 @@ export class DexieRepository implements Repository {
       if (log) await this.db.activityLogs.put(log);
     });
   }
+  async saveSessions(sessions: StrengthSession[]) {
+    await this.db.strengthSessions.bulkPut(sessions);
+  }
   async removeSession(id: string) {
     return this.db.transaction('rw', this.db.strengthSessions, this.db.activityLogs, async () => {
       const session = await this.db.strengthSessions.get(id);

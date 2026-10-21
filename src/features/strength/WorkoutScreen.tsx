@@ -1,5 +1,5 @@
 import { ArrowLeft, ChevronDown, Plus, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useReducer } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { Button, Card, EmptyState, Input, Skeleton, Stepper } from '@/components/ui';
 import type { ExerciseSet, SessionExercise, StrengthSession } from '@/db/types';
@@ -9,6 +9,8 @@ import { dayTitle } from '@/domain/strength/dayTypes';
 import { unticked } from '@/domain/strength/finalize';
 import { hasValues, moveItem, previousSets, sessionExercise, setsFromPrevious } from '@/domain/strength/session';
 import { formatDay } from '@/domain/dates';
+import { annotatePRs } from '@/domain/strength/prs';
+import { haptic } from '@/lib/haptics';
 import { newId } from '@/lib/id';
 import { useWakeLock } from '@/lib/wakeLock';
 import { useUI } from '@/stores/ui';
@@ -145,6 +147,19 @@ export default function WorkoutScreen() {
     [editor, openSheet, changeEntry, update, openPicker],
   );
 
+  // live PR badges: treat the current session as finished and see which sets would be records
+  const prSets = useMemo(() => {
+    if (!s || !ready) return new Set<string>();
+    const others = sessions.filter((x) => x.id !== s.id);
+    const { records } = annotatePRs([...others, { ...s, status: 'done' }], { lookup: get, opts: (x, id) => ({ bodyWeightKg: x.bodyWeightKg, countBothHands: prefs.get(id)?.countBothHands }) });
+    return new Set(records.filter((r) => r.sessionId === s.id).map((r) => r.setId));
+  }, [s, sessions, get, prefs, ready]);
+  const prCount = useRef(0);
+  useEffect(() => {
+    if (prSets.size > prCount.current) haptic([15, 50, 15, 50, 30]);
+    prCount.current = prSets.size;
+  }, [prSets]);
+
   const onOpenDetail = useCallback((_exerciseId: string) => {}, []);
 
   if (s === undefined || !ready) {
@@ -262,7 +277,7 @@ export default function WorkoutScreen() {
           return (
             <ExerciseCard
               key={entry.id}
-              entry={entry}
+              entry={entry.sets.some((x) => prSets.has(x.id) !== !!x.isPR) ? { ...entry, sets: entry.sets.map((x) => ({ ...x, isPR: prSets.has(x.id) })) } : entry}
               ex={get(entry.exerciseId)}
               pref={prefs.get(entry.exerciseId)}
               prev={previousSets(entry.exerciseId, sessions, s.id)}

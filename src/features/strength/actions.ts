@@ -4,6 +4,7 @@ import { DEFAULT_STRENGTH_SETTINGS } from '@/config/strength';
 import { WORKOUT_PRESETS, presetToDef } from '@/domain/presets';
 import { exerciseIndex, unknownExercise } from '@/domain/strength/library';
 import { finalizeSession } from '@/domain/strength/finalize';
+import { annotatePRs } from '@/domain/strength/prs';
 import { newId } from '@/lib/id';
 import { haptic } from '@/lib/haptics';
 import { refresh } from '@/lib/queryClient';
@@ -58,9 +59,20 @@ export async function finishSession(raw: StrengthSession, opts: { markFilledDone
   };
   const saved = { ...s, activityLogId: log.id };
   await repo.saveSession(saved, log);
+  await recomputePRs();
   haptic([10, 40, 10]);
   await refresh();
-  return saved;
+  return (await repo.getSession(saved.id)) ?? saved;
+}
+
+/** Re-flag PR sets across history (cheap; keeps flags right after edits and deletes). */
+export async function recomputePRs() {
+  const [ctx, all] = await Promise.all([context(), repo.allSessions()]);
+  const { changed } = annotatePRs(all, {
+    lookup: ctx.lookup,
+    opts: (s, id) => ({ includeWarmups: false, bodyWeightKg: s.bodyWeightKg ?? ctx.bodyWeightKg, countBothHands: ctx.countBothHands(id) }),
+  });
+  if (changed.length) await repo.saveSessions(changed);
 }
 
 export async function discardSession(id: string) {
@@ -70,6 +82,7 @@ export async function discardSession(id: string) {
 
 export async function deleteSessionWithUndo(id: string) {
   const rec = await repo.removeSession(id);
+  await recomputePRs();
   await refresh();
   if (!rec) return;
   useUI.getState().showSnack({
@@ -77,6 +90,7 @@ export async function deleteSessionWithUndo(id: string) {
     actionLabel: 'Undo',
     onAction: async () => {
       await repo.restoreSession(rec);
+      await recomputePRs();
       await refresh();
     },
   });
