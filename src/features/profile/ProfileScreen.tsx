@@ -4,7 +4,10 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Button, Card, Chip, Input, Notice, PageHeader, Segmented, SectionHeader, Toggle } from '@/components/ui';
 import { repo } from '@/db';
-import type { ActivityLevel, DietPreference, Settings } from '@/db/types';
+import type { ActivityLevel, DietPreference, Settings, StrengthSettings } from '@/db/types';
+import { useStrengthSettings, useWeightUnit } from '@/hooks/strength';
+import { WEIGHT_STEPS_KG, WEIGHT_STEPS_LB } from '@/config/strength';
+import { fmtSec } from '@/domain/strength/units';
 import { useProfile, useRangeData, useSettings, useToday } from '@/hooks/data';
 import { ACTIVITY_LABELS, cmToFtIn, ftInToCm } from '@/domain/targets';
 import { addDays, WEEKDAY_NAMES } from '@/domain/dates';
@@ -65,6 +68,9 @@ export default function ProfileScreen() {
           </Row>
         </Card>
 
+        <SectionHeader title="Strength training" />
+        <StrengthSettingsCard />
+
         <SectionHeader title="Reminders" />
         <RemindersCard s={s} />
 
@@ -111,6 +117,58 @@ export default function ProfileScreen() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function StrengthSettingsCard() {
+  const st = useStrengthSettings();
+  const s = useSettings();
+  const unit = useWeightUnit();
+  const set = (patch: Partial<StrengthSettings>) => update({ strength: { ...s.strength, ...patch } });
+  const steps = unit === 'lb' ? WEIGHT_STEPS_LB : WEIGHT_STEPS_KG;
+  const step = unit === 'lb' ? st.weightStepLb : st.weightStepKg;
+  const bars = unit === 'lb' ? [{ v: 20.412, l: '45' }, { v: 15.876, l: '35' }, { v: 11.34, l: '25' }] : [{ v: 20, l: '20' }, { v: 15, l: '15' }, { v: 10, l: '10' }];
+  return (
+    <Card className="space-y-4">
+      <div>
+        <p className="mb-2 font-medium">Weight +/− step</p>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Weight step">
+          {steps.map((v) => (
+            <Chip key={v} selected={step === v} onClick={() => set(unit === 'lb' ? { weightStepLb: v } : { weightStepKg: v })}>
+              {v} {unit}
+            </Chip>
+          ))}
+        </div>
+      </div>
+      <div>
+        <p className="mb-2 font-medium">Barbell weight</p>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Barbell weight">
+          {bars.map((b) => (
+            <Chip key={b.l} selected={Math.abs(st.barWeightKg - b.v) < 0.1} onClick={() => set({ barWeightKg: b.v })}>
+              {b.l} {unit}
+            </Chip>
+          ))}
+        </div>
+      </div>
+      <Row label="Default rest" hint="Used when an exercise has no rest time of its own.">
+        <select aria-label="Default rest" value={st.defaultRestSec} onChange={(e) => set({ defaultRestSec: Number(e.target.value) })} className="min-h-11 rounded-xl border border-line bg-surface px-2">
+          <option value={0}>Per exercise</option>
+          {[45, 60, 90, 120, 150, 180, 240].map((v) => <option key={v} value={v}>{fmtSec(v)}</option>)}
+        </select>
+      </Row>
+      <Toggle checked={st.includeWarmupsInVolume} onChange={(v) => set({ includeWarmupsInVolume: v })} label="Count warm-ups in volume" description="Off by default — warm-ups never count as personal records." />
+      <Toggle checked={st.restSound} onChange={(v) => set({ restSound: v })} label="Rest timer sound" />
+      <Toggle checked={st.restVibrate} onChange={(v) => set({ restVibrate: v })} label="Rest timer vibration" />
+      <Toggle
+        checked={st.restNotify}
+        onChange={async (v) => {
+          if (v && !(await requestNotificationPermission())) return;
+          set({ restNotify: v });
+        }}
+        label="Rest timer notification"
+        description="Alerts you when rest is over while the app is in the background."
+      />
+    </Card>
   );
 }
 

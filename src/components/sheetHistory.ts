@@ -63,6 +63,32 @@ export function useCloseSheet() {
   };
 }
 
+/**
+ * Close the top sheet, then run `fn` once history has settled — for actions that open
+ * another sheet or navigate (doing that while `history.back()` is pending would be undone by it).
+ */
+export function useCloseSheetThen() {
+  const close = useCloseSheet();
+  return (fn: () => void | Promise<void>) =>
+    new Promise<void>((resolve) => {
+      const viaHistory = pushed > 0 && depthFromState() === pushed;
+      let done = false;
+      const run = () => {
+        if (done) return;
+        done = true;
+        window.removeEventListener('popstate', run);
+        // let the popstate handler above update the sheet stack first
+        setTimeout(() => void Promise.resolve(fn()).then(resolve), 0);
+      };
+      if (viaHistory) {
+        window.addEventListener('popstate', run);
+        setTimeout(run, 500); // safety net if popstate never fires
+      }
+      close();
+      if (!viaHistory) run();
+    });
+}
+
 /** Close every sheet, then navigate — without leaving stale sheet entries in history. */
 export function useNavigateFromSheets() {
   const navigate = useNavigate();

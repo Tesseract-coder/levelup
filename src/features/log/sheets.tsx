@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { useQuery } from '@tanstack/react-query';
 import { Apple, ChevronRight, Dumbbell, GlassWater, ListChecks, MessageSquareText, Moon, Plus, Scale, Smile, Trash2, Trophy, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, useEffect, useMemo, useState } from 'react';
 import { Sheet } from '@/components/Sheet';
 import { useCloseSheet, useNavigateFromSheets } from '@/components/sheetHistory';
 import { ActivityIcon } from '@/components/icons';
@@ -18,6 +18,8 @@ import { findPRs, logValue, saveSleep, saveWorkout, setAvoidAnswer, toggleCheck 
 import { newId } from '@/lib/id';
 import { refresh } from '@/lib/queryClient';
 import { useSelectedDate } from '@/hooks/data';
+
+const StartWorkoutSheet = lazy(() => import('@/features/strength/StartWorkoutSheet'));
 
 // ------------------------------------------------------------------ Quick Add
 
@@ -423,6 +425,7 @@ const emptyExercise = (): StrengthExercise => ({ name: '', sets: [{ reps: 10, we
 
 export function WorkoutSheet({ activityId, logId, date }: { activityId?: string; logId?: string; date: DateKey }) {
   const close = useCloseSheet();
+  const go = useNavigateFromSheets();
   const openSheet = useUI((s) => s.openSheet);
   const { data: acts = [] } = useActivities(true);
   const workouts = acts.filter((a) => a.kind === 'workout' && (!a.archived || a.id === activityId));
@@ -462,6 +465,14 @@ export function WorkoutSheet({ activityId, logId, date }: { activityId?: string;
   const kcal = caloriesBurned(def?.met, weightKg, dur, intensity);
   const prs = useMemo(() => findPRs(exercises, history), [exercises, history]);
   const imperial = profile?.units === 'imperial';
+  const sessionId = existing?.sessionId;
+  useEffect(() => {
+    if (sessionId) go(`/workout/${sessionId}`);
+  }, [sessionId]);
+
+  // strength sessions have their own logger; legacy duration-only logs keep this form
+  if (sessionId) return null;
+  if (def?.isStrength && !logId) return <StartWorkoutSheet date={date} />;
 
   if (!def) {
     return (

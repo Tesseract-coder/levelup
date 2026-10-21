@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DateKey } from '@/db/types';
+import type { DateKey, DayType, ExerciseSet, SessionExercise } from '@/db/types';
 
 export type SheetSpec =
   | { type: 'quickAdd' }
@@ -11,7 +11,26 @@ export type SheetSpec =
   | { type: 'mood'; date: DateKey }
   | { type: 'manualFood'; date: DateKey; meal?: string; entryId?: string }
   | { type: 'activityEditor'; activityId?: string; kind?: 'workout' | 'habit' }
-  | { type: 'activityText'; date: DateKey };
+  | { type: 'activityText'; date: DateKey }
+  // strength
+  | { type: 'strengthStart'; date: DateKey }
+  | { type: 'exercisePicker'; dayTypes: DayType[]; customDayName?: string; mode: 'add' | 'swap'; excludeIds?: string[]; onPick: (ids: string[]) => void }
+  | { type: 'setDetails'; set: ExerciseSet; label: string; onChange: (patch: Partial<ExerciseSet>) => void; onDelete: () => void }
+  | {
+      type: 'exerciseMenu';
+      entry: SessionExercise;
+      canMoveUp: boolean;
+      canMoveDown: boolean;
+      /** Superset state relative to the next exercise. */
+      superset: 'none' | 'linked' | 'can_link';
+      onChange: (patch: Partial<SessionExercise>) => void;
+      onMove: (dir: -1 | 1) => void;
+      onSuperset: () => void;
+      onSwap: () => void;
+      onRemove: () => void;
+    }
+  | { type: 'plateCalc'; totalKg?: number }
+  | { type: 'confirm'; title: string; body?: string; actions: { label: string; variant?: 'primary' | 'secondary' | 'danger'; onClick: () => void | Promise<void> }[] };
 
 export interface Snack {
   id: number;

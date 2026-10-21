@@ -5,6 +5,13 @@ import { ActivityEditorSheet } from '@/features/habits/ActivityEditorSheet';
 
 const ManualFoodSheet = lazy(() => import('@/features/food/ManualFoodSheet'));
 const ActivityTextSheet = lazy(() => import('@/features/log/ActivityTextSheet'));
+const StartWorkoutSheet = lazy(() => import('@/features/strength/StartWorkoutSheet'));
+const ExercisePickerSheet = lazy(() => import('@/features/strength/ExercisePickerSheet'));
+const StrengthSheets = () => import('@/features/strength/sheets');
+const SetDetailsSheet = lazy(() => StrengthSheets().then((m) => ({ default: m.SetDetailsSheet })));
+const ExerciseMenuSheet = lazy(() => StrengthSheets().then((m) => ({ default: m.ExerciseMenuSheet })));
+const PlateCalcSheet = lazy(() => StrengthSheets().then((m) => ({ default: m.PlateCalcSheet })));
+const ConfirmSheet = lazy(() => StrengthSheets().then((m) => ({ default: m.ConfirmSheet })));
 
 function render(s: SheetSpec) {
   switch (s.type) {
@@ -28,6 +35,18 @@ function render(s: SheetSpec) {
       return <ManualFoodSheet date={s.date} meal={s.meal} entryId={s.entryId} />;
     case 'activityText':
       return <ActivityTextSheet date={s.date} />;
+    case 'strengthStart':
+      return <StartWorkoutSheet date={s.date} />;
+    case 'exercisePicker':
+      return <ExercisePickerSheet spec={s} />;
+    case 'setDetails':
+      return <SetDetailsSheet spec={s} />;
+    case 'exerciseMenu':
+      return <ExerciseMenuSheet spec={s} />;
+    case 'plateCalc':
+      return <PlateCalcSheet totalKg={s.totalKg} />;
+    case 'confirm':
+      return <ConfirmSheet spec={s} />;
   }
 }
 

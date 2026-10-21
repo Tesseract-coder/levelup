@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Apple, Check, ChevronLeft, ChevronRight, Dumbbell, Flame, Moon, Plus, Sparkles, X } from 'lucide-react';
+import { Apple, Check, ChevronLeft, ChevronRight, Dumbbell, Flame, Moon, Play, Plus, Sparkles, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Ring } from '@/components/Ring';
@@ -7,6 +7,8 @@ import { ActivityIcon } from '@/components/icons';
 import { Button, Card, EmptyState, EstimateBadge, SectionHeader, Skeleton } from '@/components/ui';
 import { useGoal, useProfile, useRangeData, useSelectedDate, useSettings, useToday } from '@/hooks/data';
 import { useUI } from '@/stores/ui';
+import { useInProgressSession } from '@/hooks/strength';
+import { dayTitle } from '@/domain/strength/dayTypes';
 import { addDays, formatDay, fromKey, greeting, weekdayShort } from '@/domain/dates';
 import { computeDay, STREAK_LOOKBACK, type HabitRow } from '@/domain/day';
 import { formatValue, scheduleLabel } from '@/domain/habits';
@@ -337,8 +339,38 @@ function HabitItem({ row, date }: { row: HabitRow; date: string }) {
   );
 }
 
+function StrengthStart({ date }: { date: string }) {
+  const openSheet = useUI((s) => s.openSheet);
+  const navigate = useNavigate();
+  const { data: live } = useInProgressSession();
+  if (live) {
+    return (
+      <button type="button" onClick={() => navigate(`/workout/${live.id}`)} className="mb-1 flex min-h-16 w-full items-center gap-3 rounded-2xl bg-accent px-3 text-left text-on-accent">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-on-accent/15">
+          <Play size={20} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold">Resume workout</span>
+          <span className="block truncate text-sm opacity-90">
+            {dayTitle(live.dayTypes, live.customDayName)} · {live.exercises.length} exercises
+          </span>
+        </span>
+        <ChevronRight size={18} aria-hidden />
+      </button>
+    );
+  }
+  return (
+    <div className="p-1">
+      <Button block onClick={() => openSheet({ type: 'strengthStart', date })}>
+        <Dumbbell size={18} /> Start strength workout
+      </Button>
+    </div>
+  );
+}
+
 function WorkoutsSection({ view, date }: { view: NonNullable<ReturnType<typeof computeDay>>; date: string }) {
   const openSheet = useUI((s) => s.openSheet);
+  const hasStrength = view.workoutDefs.some((w) => w.def.isStrength);
   return (
     <section aria-labelledby="workouts-h">
       <SectionHeader
@@ -351,6 +383,7 @@ function WorkoutsSection({ view, date }: { view: NonNullable<ReturnType<typeof c
       />
       <h2 id="workouts-h" className="sr-only">Workouts</h2>
       <Card className="p-2">
+        {hasStrength && <StrengthStart date={date} />}
         {view.workouts.length > 0 && (
           <ul className="mb-1">
             {view.workouts.map(({ def, log }) => (

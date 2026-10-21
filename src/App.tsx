@@ -24,6 +24,9 @@ const ProfileScreen = lazy(() => import('@/features/profile/ProfileScreen'));
 const GoalsScreen = lazy(() => import('@/features/goals/GoalsScreen'));
 const SummaryScreen = lazy(() => import('@/features/summary/SummaryScreen'));
 const ReviewScreen = lazy(() => import('@/features/summary/ReviewScreen'));
+const WorkoutScreen = lazy(() => import('@/features/strength/WorkoutScreen'));
+const WorkoutSummaryScreen = lazy(() => import('@/features/strength/WorkoutSummaryScreen'));
+const RestTimerPill = lazy(() => import('@/features/strength/RestTimerPill').then((m) => ({ default: m.RestTimerPill })));
 
 function PageFallback() {
   return (
@@ -116,6 +119,8 @@ export function App() {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/food/new" element={<FoodEntryScreen />} />
           <Route path="/review" element={<ReviewScreen />} />
+          <Route path="/workout/:id" element={<WorkoutScreen />} />
+          <Route path="/workout/:id/summary" element={<WorkoutSummaryScreen />} />
         </Route>
         <Route element={<TabLayout />}>
           <Route index element={<TodayScreen />} />
@@ -131,6 +136,9 @@ export function App() {
         </Route>
       </Routes>
       <SheetHost />
+      <Suspense fallback={null}>
+        <RestTimerPill />
+      </Suspense>
       <Snackbar />
     </div>
   );

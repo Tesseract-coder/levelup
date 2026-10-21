@@ -40,11 +40,11 @@ test('a full day of food becomes an editable per-item breakdown with totals vs t
 });
 
 test('workout logging with calories burned estimate', async ({ page }) => {
-  await onboard(page);
-  await page.getByRole('button', { name: /Strength training/ }).last().click();
+  await onboard(page, { habits: ['Running', 'Water', 'Journaling', 'Reading'] });
+  await page.getByRole('button', { name: /Running/ }).last().click();
   await expect(page.getByText(/≈ \d+ kcal/)).toBeVisible();
   await page.getByRole('button', { name: 'Log workout' }).click();
-  await expect(page.getByRole('img', { name: /Active: 45 of/ })).toBeVisible();
+  await expect(page.getByRole('img', { name: /Active: 30 of/ })).toBeVisible();
 });
 
 test('system back closes a bottom sheet instead of leaving the screen', async ({ page }) => {

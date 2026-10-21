@@ -78,6 +78,9 @@ export class DexieRepository implements Repository {
     }
     return this.db.activityLogs.where('date').between(start, end, true, true).toArray();
   }
+  async getLog(id: string) {
+    return this.db.activityLogs.get(id);
+  }
   async saveLog(log: RecordOf<'activityLogs'>) {
     await this.db.activityLogs.put(log);
   }

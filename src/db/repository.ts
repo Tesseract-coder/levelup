@@ -83,6 +83,7 @@ export interface Repository {
 
   // activity logs
   logsInRange(start: DateKey, end: DateKey, activityId?: ID): Promise<ActivityLog[]>;
+  getLog(id: ID): Promise<ActivityLog | undefined>;
   saveLog(log: ActivityLog): Promise<void>;
   saveLogs(logs: ActivityLog[]): Promise<void>;
   lastLogFor(activityId: ID, before?: DateKey): Promise<ActivityLog | undefined>;
