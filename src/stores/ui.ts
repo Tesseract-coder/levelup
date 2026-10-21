@@ -30,6 +30,7 @@ export type SheetSpec =
       onRemove: () => void;
     }
   | { type: 'plateCalc'; totalKg?: number }
+  | { type: 'kcalInfo'; sessionId: string }
   | { type: 'confirm'; title: string; body?: string; actions: { label: string; variant?: 'primary' | 'secondary' | 'danger'; onClick: () => void | Promise<void> }[] };
 
 export interface Snack {

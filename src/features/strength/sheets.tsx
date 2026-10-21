@@ -9,7 +9,13 @@ import { useExercisePrefs, useExercises, useStrengthSettings, useWeightUnit } fr
 import { PLATES_KG, PLATES_LB, platesPerSide } from '@/domain/strength/plates';
 import { fmtSec, toDisplay } from '@/domain/strength/units';
 import type { SheetSpec } from '@/stores/ui';
-import { updatePref } from './actions';
+import { setSessionIntensity, updatePref } from './actions';
+import { useQuery } from '@tanstack/react-query';
+import { repo } from '@/db';
+import type { StrengthIntensity } from '@/db/types';
+import { STRENGTH_MET, MET_RANGE } from '@/config/strength';
+import { estimateSession } from '@/domain/strength/calories';
+import { restFor } from './format';
 
 export const SET_TYPE_LABELS: Record<SetType, string> = { warmup: 'Warm-up', working: 'Working', drop: 'Drop set', failure: 'To failure' };
 
@@ -258,6 +264,66 @@ export function ConfirmSheet({ spec }: { spec: Extract<SheetSpec, { type: 'confi
         <Button block variant="ghost" onClick={close}>
           Cancel
         </Button>
+      </div>
+    </Sheet>
+  );
+}
+
+// ------------------------------------------------------- calorie explanation
+
+const INTENSITY_LABEL: Record<StrengthIntensity, string> = { light: 'Light', moderate: 'Moderate', vigorous: 'Vigorous' };
+
+export function KcalInfoSheet({ sessionId }: { sessionId: string }) {
+  const { data: s } = useQuery({ queryKey: ['session', sessionId], queryFn: async () => (await repo.getSession(sessionId)) ?? null });
+  const { get } = useExercises();
+  const prefs = useExercisePrefs();
+  const settings = useStrengthSettings();
+  if (!s) return null;
+  const est = estimateSession(s, { lookup: get, restOf: (e) => restFor(get(e.exerciseId), e.restSec, prefs.get(e.exerciseId), settings), bodyWeightKg: s.bodyWeightKg, minutes: s.durationMin });
+  const auto = estimateSession({ ...s, intensityOverridden: false }, { lookup: get, restOf: (e) => restFor(get(e.exerciseId), e.restSec, prefs.get(e.exerciseId), settings), bodyWeightKg: s.bodyWeightKg, minutes: s.durationMin });
+  return (
+    <Sheet title="How is this calculated?" size="tall">
+      <div className="space-y-4 text-[15px] leading-relaxed">
+        <div className="rounded-2xl bg-surface-2 p-4 text-center">
+          <p className="tabular text-2xl font-extrabold">
+            ≈ {s.kcalLow}–{s.kcalHigh} kcal
+          </p>
+          <p className="tabular mt-1 text-sm text-muted">
+            MET {est.met} × {Math.round(est.weightKg)} kg × {(est.minutes / 60).toFixed(2)} h, shown at MET {est.met - MET_RANGE}–{est.met + MET_RANGE}
+          </p>
+        </div>
+        <div>
+          <p className="mb-2 font-semibold">Intensity</p>
+          <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Intensity">
+            {([null, 'light', 'moderate', 'vigorous'] as (StrengthIntensity | null)[]).map((v) => {
+              const on = v == null ? !s.intensityOverridden : s.intensityOverridden && s.intensity === v;
+              return (
+                <button key={v ?? 'auto'} type="button" role="radio" aria-checked={on} onClick={() => void setSessionIntensity(s, v)} className={clsx('min-h-12 rounded-xl text-sm font-semibold', on ? 'bg-accent text-on-accent' : 'bg-surface-2')}>
+                  {v ? INTENSITY_LABEL[v] : 'Auto'}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-sm text-muted">
+            Auto picked <b>{INTENSITY_LABEL[auto.intensity]}</b> (MET {STRENGTH_MET[auto.intensity]}): {auto.reasons.join(' · ')}.
+          </p>
+        </div>
+        <ul className="list-disc space-y-1.5 pl-5 text-sm">
+          <li>
+            <b>MET</b> values come from the Compendium of Physical Activities: light {STRENGTH_MET.light}, moderate {STRENGTH_MET.moderate}, vigorous {STRENGTH_MET.vigorous}.
+          </li>
+          <li>
+            <b>Body weight</b>: {est.weightAssumed ? 'no weight logged yet, so 70 kg is assumed — log your weight for a better estimate.' : `your latest logged weight (${Math.round(est.weightKg)} kg).`}
+          </li>
+          <li>
+            <b>Time</b>: {s.mode === 'live' ? 'the workout timer, minus pauses longer than 10 minutes.' : est.minutesEstimated ? 'estimated from your sets (about 3 s per rep plus rest between sets).' : 'the duration you entered.'}
+          </li>
+          <li>
+            <b>Per exercise</b>: the session total is split by each exercise's working and rest time, weighted for load (big lower-body lifts &gt; upper-body compounds &gt; isolation). The parts always add up to the total.
+          </li>
+          <li>The “afterburn” (EPOC) after lifting is small and isn't included.</li>
+          <li>Real burn varies a lot between people. For weight goals, logging food accurately matters far more than this number.</li>
+        </ul>
       </div>
     </Sheet>
   );

@@ -1,5 +1,6 @@
-import type { Exercise, StrengthSession } from '@/db/types';
-import { MET_RANGE, PAUSE_THRESHOLD_MIN, STRENGTH_MET } from '@/config/strength';
+import type { Exercise, SessionExercise, StrengthSession } from '@/db/types';
+import { PAUSE_THRESHOLD_MIN } from '@/config/strength';
+import { estimateSession } from './calories';
 import { hasValues } from './session';
 import { sessionVolume } from './metrics';
 
@@ -9,6 +10,8 @@ export interface FinalizeCtx {
   includeWarmups: boolean;
   /** Per-exercise "count both hands" overrides. */
   countBothHands?: (id: string) => boolean | undefined;
+  /** Rest between sets for an exercise entry (entry → pref → setting → library default). */
+  restOf: (e: SessionExercise) => number;
   now: number;
 }
 
@@ -45,27 +48,29 @@ export function liveActiveMinutes(s: Pick<StrengthSession, 'startedAt' | 'endedA
   return Math.max(1, Math.round(ms / 60_000));
 }
 
-export function metKcal(met: number, weightKg: number, minutes: number): number {
-  return (met * weightKg * minutes) / 60;
-}
-const r5 = (v: number) => Math.round(v / 5) * 5;
-
 /** Turn an in-progress (or edited) session into its saved form: cleaned, timed, totalled, estimated. */
 export function finalizeSession(raw: StrengthSession, ctx: FinalizeCtx, opts: { markFilledDone: boolean }): StrengthSession {
   let s = cleanSession(raw, opts.markFilledDone);
-  const durationMin = s.mode === 'live' && raw.status === 'in_progress' ? liveActiveMinutes({ ...s, endedAt: ctx.now }, ctx.now) : Math.max(1, Math.round(s.durationMin || 0));
+  const liveRun = s.mode === 'live' && raw.status === 'in_progress';
+  const given = liveRun ? liveActiveMinutes({ ...s, endedAt: ctx.now }, ctx.now) : Math.round(s.durationMin || 0);
   const bodyWeightKg = s.bodyWeightKg ?? ctx.bodyWeightKg;
-  s = { ...s, durationMin, bodyWeightKg, endedAt: s.endedAt ?? (raw.status === 'in_progress' && s.mode === 'live' ? ctx.now : s.startedAt + durationMin * 60_000) };
-  const totalVolumeKg = sessionVolume(s, ctx.lookup, { includeWarmups: ctx.includeWarmups, prefs: ctx.countBothHands });
-  const met = STRENGTH_MET[s.intensity];
-  const w = bodyWeightKg ?? 70;
+  const est = estimateSession({ ...s, durationMin: given }, { lookup: ctx.lookup, restOf: ctx.restOf, bodyWeightKg });
+  const durationMin = est.minutes;
+  s = {
+    ...s,
+    durationMin,
+    bodyWeightKg,
+    intensity: est.intensity,
+    endedAt: liveRun ? ctx.now : s.startedAt + durationMin * 60_000,
+    exercises: s.exercises.map((e, i) => ({ ...e, kcalShare: est.shares[i] })),
+  };
   return {
     ...s,
     status: 'done',
-    totalVolumeKg,
+    totalVolumeKg: sessionVolume(s, ctx.lookup, { includeWarmups: ctx.includeWarmups, prefs: ctx.countBothHands }),
     kcalMethod: 'met',
-    kcalEstimate: r5(metKcal(met, w, durationMin)),
-    kcalLow: r5(metKcal(met - MET_RANGE, w, durationMin)),
-    kcalHigh: r5(metKcal(met + MET_RANGE, w, durationMin)),
+    kcalEstimate: est.range.mid,
+    kcalLow: est.range.low,
+    kcalHigh: est.range.high,
   };
 }

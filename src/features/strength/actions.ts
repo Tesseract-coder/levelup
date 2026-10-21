@@ -1,5 +1,6 @@
 import { repo } from '@/db';
-import type { ActivityDef, ActivityLog, Exercise, ExercisePref, Intensity, StrengthIntensity, StrengthSession } from '@/db/types';
+import type { ActivityDef, ActivityLog, Exercise, ExercisePref, Intensity, SessionExercise, StrengthIntensity, StrengthSession } from '@/db/types';
+import { restFor } from './format';
 import { DEFAULT_STRENGTH_SETTINGS } from '@/config/strength';
 import { WORKOUT_PRESETS, presetToDef } from '@/domain/presets';
 import { exerciseIndex, unknownExercise } from '@/domain/strength/library';
@@ -32,10 +33,13 @@ async function context() {
   const [custom, prefs, settings, body] = await Promise.all([repo.listCustomExercises(), repo.listExercisePrefs(), repo.getSettings(), repo.latestBody()]);
   const idx = exerciseIndex(custom);
   const prefMap = new Map(prefs.map((p) => [p.exerciseId, p]));
+  const lookup = (id: string): Exercise => idx.get(id) ?? unknownExercise(id);
+  const strength = { ...DEFAULT_STRENGTH_SETTINGS, ...settings.strength };
   return {
-    lookup: (id: string): Exercise => idx.get(id) ?? unknownExercise(id),
+    lookup,
+    restOf: (e: SessionExercise) => restFor(lookup(e.exerciseId), e.restSec, prefMap.get(e.exerciseId), strength),
     countBothHands: (id: string) => prefMap.get(id)?.countBothHands,
-    includeWarmups: settings.strength?.includeWarmupsInVolume ?? DEFAULT_STRENGTH_SETTINGS.includeWarmupsInVolume,
+    includeWarmups: strength.includeWarmupsInVolume,
     bodyWeightKg: body?.weightKg,
   };
 }
@@ -73,6 +77,11 @@ export async function recomputePRs() {
     opts: (s, id) => ({ includeWarmups: false, bodyWeightKg: s.bodyWeightKg ?? ctx.bodyWeightKg, countBothHands: ctx.countBothHands(id) }),
   });
   if (changed.length) await repo.saveSessions(changed);
+}
+
+/** Change a finished session's intensity (or go back to automatic) and re-estimate calories. */
+export async function setSessionIntensity(s: StrengthSession, intensity: StrengthIntensity | null) {
+  await finishSession({ ...s, intensity: intensity ?? s.intensity, intensityOverridden: intensity != null }, { markFilledDone: true });
 }
 
 export async function discardSession(id: string) {

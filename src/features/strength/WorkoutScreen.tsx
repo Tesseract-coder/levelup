@@ -260,7 +260,19 @@ export default function WorkoutScreen() {
               />
               <Input label="Started at" type="time" value={startTime} onChange={(e) => e.target.value && update((c) => ({ ...c, startedAt: atTime(c.date, e.target.value), endedAt: undefined }))} />
             </div>
-            <Stepper label="Duration" value={s.durationMin || 45} step={5} min={5} max={300} unit="minutes" onChange={(v) => update((c) => ({ ...c, durationMin: v, endedAt: undefined }))} />
+            {s.durationMin > 0 ? (
+              <>
+                <Stepper label="Duration" value={s.durationMin} step={5} min={5} max={300} unit="minutes" onChange={(v) => update((c) => ({ ...c, durationMin: v, endedAt: undefined }))} />
+                <button type="button" className="min-h-11 text-sm font-semibold text-accent-ink" onClick={() => update((c) => ({ ...c, durationMin: 0, endedAt: undefined }))}>
+                  Not sure? Estimate it from my sets
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center justify-between gap-2 rounded-2xl bg-surface-2 p-3 text-sm">
+                <span>Duration will be estimated from your sets and rest times.</span>
+                <Button size="sm" variant="secondary" onClick={() => update((c) => ({ ...c, durationMin: 45 }))}>Set it</Button>
+              </div>
+            )}
           </Card>
         )}
 

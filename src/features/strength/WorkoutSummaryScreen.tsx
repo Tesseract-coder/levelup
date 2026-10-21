@@ -3,7 +3,7 @@ import { Check, ListPlus, Trophy } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router';
-import { Button, Card, Chip, EstimateBadge, Input, Skeleton } from '@/components/ui';
+import { Button, Card, Chip, Input, Skeleton } from '@/components/ui';
 import { repo } from '@/db';
 import type { StrengthSession } from '@/db/types';
 import { useAllSessions, useExercises, useRoutines, useWeightUnit } from '@/hooks/strength';
@@ -23,6 +23,13 @@ async function patchSession(s: StrengthSession, patch: Partial<StrengthSession>)
   const log = s.activityLogId ? await repo.getLog(s.activityLogId) : undefined;
   await repo.saveSession(next, log && 'notes' in patch ? { ...log, notes: patch.notes } : undefined);
   await refresh();
+}
+
+/** An exercise's share as a range, scaled like the session range. */
+export function kcalBand(share: number, s: Pick<StrengthSession, 'kcalEstimate' | 'kcalLow' | 'kcalHigh'>) {
+  const lo = Math.round((share * s.kcalLow) / s.kcalEstimate);
+  const hi = Math.round((share * s.kcalHigh) / s.kcalEstimate);
+  return lo === hi ? `≈ ${lo} kcal` : `≈ ${lo}–${hi} kcal`;
 }
 
 export default function WorkoutSummaryScreen() {
@@ -89,9 +96,12 @@ export default function WorkoutSummaryScreen() {
         <div className="flex items-center justify-between gap-2 border-t border-line pt-2">
           <span className="text-muted">Calories burned</span>
           <span className="tabular flex items-center gap-2 font-bold">
-            ≈ {s.kcalLow}–{s.kcalHigh} kcal <EstimateBadge note="An estimate from MET values, your body weight and active time. See the breakdown below." />
+            ≈ {s.kcalLow}–{s.kcalHigh} kcal
           </span>
         </div>
+        <button type="button" onClick={() => useUI.getState().openSheet({ type: 'kcalInfo', sessionId: s.id })} className="min-h-11 text-sm font-semibold text-accent-ink">
+          How is this calculated?
+        </button>
       </Card>
 
       {prs.length > 0 && (
@@ -134,7 +144,7 @@ export default function WorkoutSummaryScreen() {
                   <span className="block truncate font-semibold">{ex.name}</span>
                   <span className="block truncate text-sm text-muted">{fmtPrevSets(e.sets, ex, unit)}</span>
                 </span>
-                {e.kcalShare != null && <span className="tabular shrink-0 text-sm text-muted">≈{e.kcalShare} kcal</span>}
+                {e.kcalShare != null && s.kcalEstimate > 0 && <span className="tabular shrink-0 text-sm text-muted">{kcalBand(e.kcalShare, s)}</span>}
               </li>
             );
           })}

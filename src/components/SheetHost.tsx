@@ -11,6 +11,7 @@ const StrengthSheets = () => import('@/features/strength/sheets');
 const SetDetailsSheet = lazy(() => StrengthSheets().then((m) => ({ default: m.SetDetailsSheet })));
 const ExerciseMenuSheet = lazy(() => StrengthSheets().then((m) => ({ default: m.ExerciseMenuSheet })));
 const PlateCalcSheet = lazy(() => StrengthSheets().then((m) => ({ default: m.PlateCalcSheet })));
+const KcalInfoSheet = lazy(() => StrengthSheets().then((m) => ({ default: m.KcalInfoSheet })));
 const ConfirmSheet = lazy(() => StrengthSheets().then((m) => ({ default: m.ConfirmSheet })));
 
 function render(s: SheetSpec) {
@@ -45,6 +46,8 @@ function render(s: SheetSpec) {
       return <ExerciseMenuSheet spec={s} />;
     case 'plateCalc':
       return <PlateCalcSheet totalKg={s.totalKg} />;
+    case 'kcalInfo':
+      return <KcalInfoSheet sessionId={s.sessionId} />;
     case 'confirm':
       return <ConfirmSheet spec={s} />;
   }
